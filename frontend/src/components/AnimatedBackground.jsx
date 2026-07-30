@@ -19,13 +19,13 @@ const AnimatedBackground = () => {
     };
     window.addEventListener("resize", handleResize);
 
-    // Mouse tracking for cursor spotlight
+    // Mouse tracking for medical red spotlight
     const mouse = {
       x: width / 2,
       y: height / 2,
       targetX: width / 2,
       targetY: height / 2,
-      radius: 180,
+      radius: 200,
     };
 
     const handleMouseMove = (e) => {
@@ -34,19 +34,19 @@ const AnimatedBackground = () => {
     };
     window.addEventListener("mousemove", handleMouseMove);
 
-    // Particles setup
-    const numParticles = Math.min(Math.floor((width * height) / 14000), 75);
-    const particles = [];
+    // Floating Blood Cell Particles
+    const numCells = Math.min(Math.floor((width * height) / 16000), 65);
+    const bloodCells = [];
 
-    class Particle {
+    class BloodCell {
       constructor() {
         this.x = Math.random() * width;
         this.y = Math.random() * height;
-        this.vx = (Math.random() - 0.5) * 0.6;
-        this.vy = (Math.random() - 0.5) * 0.6;
-        this.radius = Math.random() * 2 + 1;
+        this.vx = (Math.random() - 0.5) * 0.5;
+        this.vy = (Math.random() - 0.5) * 0.5;
+        this.radius = Math.random() * 3 + 2;
         this.baseAlpha = Math.random() * 0.4 + 0.2;
-        this.color = Math.random() > 0.5 ? "#6366F1" : "#8B5CF6";
+        this.color = Math.random() > 0.3 ? "#DC2626" : "#EF4444";
       }
 
       update() {
@@ -58,7 +58,6 @@ const AnimatedBackground = () => {
       }
 
       draw() {
-        // Calculate distance from mouse for hover glow
         const dx = mouse.x - this.x;
         const dy = mouse.y - this.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
@@ -72,59 +71,96 @@ const AnimatedBackground = () => {
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
         ctx.globalAlpha = alpha;
+        ctx.shadowColor = "#DC2626";
+        ctx.shadowBlur = 10;
         ctx.fill();
+        ctx.shadowBlur = 0;
         ctx.globalAlpha = 1.0;
       }
     }
 
-    for (let i = 0; i < numParticles; i++) {
-      particles.push(new Particle());
+    for (let i = 0; i < numCells; i++) {
+      bloodCells.push(new BloodCell());
     }
 
-    // Animation Loop
+    // ECG Heartbeat wave parameters
+    let ecgOffsetX = 0;
+
+    const drawECGLine = () => {
+      const centerY = height * 0.85;
+      ecgOffsetX = (ecgOffsetX + 2.5) % width;
+
+      ctx.beginPath();
+      ctx.moveTo(0, centerY);
+
+      for (let x = 0; x < width; x += 5) {
+        let y = centerY;
+        const distToPulse = Math.abs(x - ecgOffsetX);
+
+        if (distToPulse < 40) {
+          // ECG Heartbeat spikes (PQRST wave pattern)
+          const norm = (distToPulse / 40) * Math.PI * 2;
+          y = centerY - Math.sin(norm) * 35 * Math.exp(-Math.abs(distToPulse - 20) / 10);
+        }
+
+        ctx.lineTo(x, y);
+      }
+
+      ctx.strokeStyle = "rgba(220, 38, 38, 0.25)";
+      ctx.lineWidth = 2;
+      ctx.shadowColor = "#DC2626";
+      ctx.shadowBlur = 12;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    };
+
+    // Main 60FPS Render Loop
     const render = () => {
-      // Smooth mouse spring interpolation
       mouse.x += (mouse.targetX - mouse.x) * 0.08;
       mouse.y += (mouse.targetY - mouse.y) * 0.08;
 
       ctx.clearRect(0, 0, width, height);
 
-      // Radial mouse spotlight glow
+      // Radial Medical Red + Emergency Blue spotlight
       const radialGradient = ctx.createRadialGradient(
         mouse.x,
         mouse.y,
         0,
         mouse.x,
         mouse.y,
-        350
+        380
       );
-      radialGradient.addColorStop(0, "rgba(99, 102, 241, 0.15)");
-      radialGradient.addColorStop(0.5, "rgba(139, 92, 246, 0.05)");
+      radialGradient.addColorStop(0, "rgba(220, 38, 38, 0.16)");
+      radialGradient.addColorStop(0.5, "rgba(59, 130, 246, 0.06)");
       radialGradient.addColorStop(1, "rgba(9, 9, 11, 0)");
 
       ctx.fillStyle = radialGradient;
       ctx.fillRect(0, 0, width, height);
 
-      // Draw particle connections
-      for (let i = 0; i < particles.length; i++) {
-        particles[i].update();
-        particles[i].draw();
+      // Draw floating blood cells
+      for (let i = 0; i < bloodCells.length; i++) {
+        bloodCells[i].update();
+        bloodCells[i].draw();
 
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x;
-          const dy = particles[i].y - particles[j].y;
+        // Connect nearby blood cells with subtle crimson lines
+        for (let j = i + 1; j < bloodCells.length; j++) {
+          const dx = bloodCells[i].x - bloodCells[j].x;
+          const dy = bloodCells[i].y - bloodCells[j].y;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
-          if (dist < 120) {
+          if (dist < 110) {
             ctx.beginPath();
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = "rgba(99, 102, 241, 0.12)";
-            ctx.lineWidth = 1 - dist / 120;
+            ctx.moveTo(bloodCells[i].x, bloodCells[i].y);
+            ctx.lineTo(bloodCells[j].x, bloodCells[j].y);
+            ctx.strokeStyle = "rgba(220, 38, 38, 0.12)";
+            ctx.lineWidth = 1 - dist / 110;
             ctx.stroke();
           }
         }
       }
+
+      // Draw ECG Line
+      drawECGLine();
 
       animationFrameId = requestAnimationFrame(render);
     };
@@ -140,11 +176,11 @@ const AnimatedBackground = () => {
 
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-[#09090b]">
-      {/* Aurora glow blobs in background */}
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-[120px] animate-pulse" />
-      <div className="absolute top-1/2 -right-40 w-[30rem] h-[30rem] bg-purple-600/20 rounded-full blur-[140px] animate-pulse delay-1000" />
-      <div className="absolute -bottom-40 left-1/3 w-[26rem] h-[26rem] bg-cyan-600/15 rounded-full blur-[130px] animate-pulse delay-700" />
-      
+      {/* Medical Crimson & Emergency Blue Aurora Blobs */}
+      <div className="absolute -top-40 -left-40 w-96 h-96 bg-red-600/20 rounded-full blur-[130px] animate-pulse" />
+      <div className="absolute top-1/2 -right-40 w-[30rem] h-[30rem] bg-rose-600/20 rounded-full blur-[150px] animate-pulse delay-1000" />
+      <div className="absolute -bottom-40 left-1/3 w-[26rem] h-[26rem] bg-blue-600/15 rounded-full blur-[140px] animate-pulse delay-700" />
+
       {/* 60FPS Interactive Canvas */}
       <canvas ref={canvasRef} className="block w-full h-full" />
     </div>

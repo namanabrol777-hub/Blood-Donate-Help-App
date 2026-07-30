@@ -30,12 +30,29 @@ const userSchema = new mongoose.Schema(
     },
     avatar: {
       type: String,
-      default: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256",
+      default: "https://images.unsplash.com/photo-1615461066841-6116e61058f4?auto=format&fit=crop&q=80&w=256",
+    },
+    bloodGroup: {
+      type: String,
+      enum: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
+      default: "O+",
+    },
+    isAvailableForDonation: {
+      type: Boolean,
+      default: true,
+    },
+    emergencyContact: {
+      type: String,
+      default: "",
+    },
+    donationsCount: {
+      type: Number,
+      default: 0,
     },
     role: {
       type: String,
-      enum: ["user", "admin"],
-      default: "user",
+      enum: ["user", "donor", "hospital", "admin"],
+      default: "donor",
     },
     authProvider: {
       type: String,
@@ -52,11 +69,11 @@ const userSchema = new mongoose.Schema(
     },
     bio: {
       type: String,
-      default: "Building the future with modern design & clean code.",
+      default: "Proud BloodLink Donor saving lives through timely blood donations.",
     },
     jobTitle: {
       type: String,
-      default: "Software Engineer",
+      default: "Registered Blood Donor",
     },
   },
   { timestamps: true }
