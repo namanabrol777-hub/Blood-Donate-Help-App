@@ -42,6 +42,12 @@ const SignupPage = () => {
   const passwordValue = watch("password", "");
 
   const onSubmit = async (data) => {
+    // Explicit Guard: Prevent Admin creation via public signup
+    if (selectedRole === "ADMIN") {
+      toast.error("Admin accounts cannot be created via public registration.");
+      return;
+    }
+
     const res = await signup({
       username: data.username,
       email: data.email,
@@ -66,7 +72,7 @@ const SignupPage = () => {
   };
 
   const handleGoogle = async () => {
-    const res = await loginWithGoogle();
+    const res = await loginWithGoogle(selectedRole);
     if (res.success && res.user) {
       const targetRoute = getDashboardRoute(res.user.role);
       navigate(targetRoute);
@@ -74,7 +80,7 @@ const SignupPage = () => {
   };
 
   const handleFacebook = async () => {
-    const res = await loginWithFacebook();
+    const res = await loginWithFacebook(selectedRole);
     if (res.success && res.user) {
       const targetRoute = getDashboardRoute(res.user.role);
       navigate(targetRoute);
@@ -94,25 +100,25 @@ const SignupPage = () => {
         >
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-600/10 border border-red-500/30 text-red-400 text-xs font-semibold backdrop-blur-md glow-medical-red">
             <HeartPulse className="w-4 h-4 text-red-500 animate-pulse" />
-            <span>Multi-Role BloodLink Registration</span>
+            <span>Public Self-Registration (Donor | Doctor | Blood Bank)</span>
           </div>
 
           <h1 className="text-5xl font-extrabold tracking-tight text-white leading-tight">
-            Join BloodLink <br />
+            Create Account <br />
             <span className="bg-gradient-to-r from-red-500 via-rose-400 to-amber-400 bg-clip-text text-transparent">
-              {selectedRole === "DONOR" ? "As a Donor" : selectedRole === "DOCTOR" ? "As a Doctor" : "As a Blood Bank"}
+              As a {selectedRole === "DONOR" ? "Blood Donor" : selectedRole === "DOCTOR" ? "Licensed Doctor" : "Blood Bank Center"}
             </span>
           </h1>
 
           <p className="text-gray-300 text-lg leading-relaxed">
-            Register your specialized account to connect directly with hospitals, emergency blood shortage dispatchers, and nationwide donor networks.
+            Register your specialized account to connect directly with emergency blood shortage dispatchers and regional networks.
           </p>
 
           <div className="space-y-3 pt-2">
             {[
-              "Dedicated Dashboards for Donors, Doctors, Blood Banks & Admins",
-              "Bcrypt 12-round salted encryption & 1-hour JWT token security",
-              "Real-Time emergency request dispatch & AI predictions",
+              "Self-registration available for Donors, Doctors & Blood Banks",
+              "Super Admin accounts are strictly protected & database-seeded",
+              "Bcrypt 12-round salted encryption & 1-hour JWT security",
               "Instant verification & role-based access control (RBAC)",
             ].map((text, idx) => (
               <div key={idx} className="flex items-center gap-3 text-sm text-gray-300">
@@ -137,30 +143,28 @@ const SignupPage = () => {
               
               <div className="text-center space-y-1">
                 <h2 className="text-2xl font-bold text-white tracking-tight">Create Account</h2>
-                <p className="text-xs text-gray-400">Select your role to get started</p>
+                <p className="text-xs text-gray-400">Select allowed role to register</p>
               </div>
 
-              {/* Role Selection Tabs */}
+              {/* Allowed Role Tabs: DONOR, DOCTOR, BLOOD_BANK (NO ADMIN) */}
               <div className="grid grid-cols-3 gap-2 p-1 rounded-2xl bg-white/5 border border-white/10">
                 {[
-                  { id: "DONOR", label: "Donor", icon: Droplet },
-                  { id: "DOCTOR", label: "Doctor", icon: Stethoscope },
-                  { id: "BLOOD_BANK", label: "Blood Bank", icon: Building2 },
+                  { id: "DONOR", label: "❤️ Donor", icon: Droplet },
+                  { id: "DOCTOR", label: "🩺 Doctor", icon: Stethoscope },
+                  { id: "BLOOD_BANK", label: "🏥 Blood Bank", icon: Building2 },
                 ].map((tab) => {
-                  const Icon = tab.icon;
                   const isActive = selectedRole === tab.id;
                   return (
                     <button
                       key={tab.id}
                       type="button"
                       onClick={() => setSelectedRole(tab.id)}
-                      className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      className={`flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         isActive
                           ? "shimmer-btn-red text-white shadow-md"
                           : "text-gray-400 hover:text-white"
                       }`}
                     >
-                      <Icon className="w-3.5 h-3.5" />
                       <span>{tab.label}</span>
                     </button>
                   );
@@ -197,7 +201,6 @@ const SignupPage = () => {
                     {errors.username && <p className="text-xs text-red-400">{errors.username.message}</p>}
                   </div>
 
-                  {/* Conditional Role Inputs */}
                   {selectedRole === "DONOR" && (
                     <div className="space-y-1">
                       <label className="text-xs font-medium text-gray-300">Blood Group</label>

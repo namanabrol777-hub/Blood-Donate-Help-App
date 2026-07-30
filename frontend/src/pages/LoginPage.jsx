@@ -7,13 +7,15 @@ import {
   Lock,
   Eye,
   EyeOff,
-  HeartPulse,
+  Shield,
+  Crown,
+  Stethoscope,
+  Building2,
+  Heart,
   Droplet,
   ArrowRight,
-  ShieldCheck,
-  Building2,
-  Activity,
-  Ambulance,
+  Sparkles,
+  CheckCircle2,
   X,
 } from "lucide-react";
 import { useAuthStore, getDashboardRoute } from "../stores/useAuthStore";
@@ -21,7 +23,60 @@ import TiltCard from "../components/TiltCard";
 import SocialLoginButtons from "../components/SocialLoginButtons";
 import toast from "react-hot-toast";
 
+const rolesData = [
+  {
+    id: "ADMIN",
+    title: "ADMIN",
+    icon: Shield,
+    badgeIcon: Crown,
+    color: "from-indigo-600 to-purple-600",
+    borderColor: "border-indigo-500/50",
+    glowClass: "glow-primary border-indigo-400",
+    textColor: "text-indigo-400",
+    bgAlpha: "bg-indigo-500/10",
+    desc: "Platform Administration",
+    hint: "Default Admin: namanabrol777@gmail.com",
+  },
+  {
+    id: "DOCTOR",
+    title: "DOCTOR",
+    icon: Stethoscope,
+    badgeIcon: Sparkles,
+    color: "from-blue-600 to-cyan-500",
+    borderColor: "border-blue-500/50",
+    glowClass: "glow-medical-blue border-blue-400",
+    textColor: "text-blue-400",
+    bgAlpha: "bg-blue-500/10",
+    desc: "Manage Patients & Blood Requests",
+  },
+  {
+    id: "BLOOD_BANK",
+    title: "BLOOD BANK",
+    icon: Building2,
+    badgeIcon: Droplet,
+    color: "from-red-600 to-rose-600",
+    borderColor: "border-red-500/50",
+    glowClass: "glow-medical-red border-red-400",
+    textColor: "text-red-400",
+    bgAlpha: "bg-red-500/10",
+    desc: "Manage Blood Inventory & Donations",
+  },
+  {
+    id: "DONOR",
+    title: "DONOR",
+    icon: Heart,
+    badgeIcon: Droplet,
+    color: "from-rose-500 to-pink-600",
+    borderColor: "border-rose-500/50",
+    glowClass: "glow-medical-accent border-rose-400",
+    textColor: "text-rose-400",
+    bgAlpha: "bg-rose-500/10",
+    desc: "Donate Blood & Save Lives",
+  },
+];
+
 const LoginPage = () => {
+  const [selectedRole, setSelectedRole] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
@@ -33,36 +88,66 @@ const LoginPage = () => {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm();
 
+  const handleRoleSelect = (roleId) => {
+    setSelectedRole(roleId);
+    // Quick helper if user selects Admin, prefill demo credentials for convenience
+    if (roleId === "ADMIN") {
+      setValue("usernameOrEmail", "namanabrol777@gmail.com");
+      setValue("password", "namanabrol");
+    }
+  };
+
   const onSubmit = async (data) => {
+    if (!selectedRole) {
+      toast.error("Please select your Role Card first!");
+      return;
+    }
+
     const res = await login({
       usernameOrEmail: data.usernameOrEmail,
       password: data.password,
+      role: selectedRole,
     });
 
     if (res.success && res.user) {
       const targetRoute = getDashboardRoute(res.user.role);
-      toast.success(`Welcome to BloodLink (${res.user.role || "DONOR"}) ❤️`);
+      toast.success(`Authenticated as ${res.user.role}! ❤️`);
       navigate(targetRoute);
     }
   };
 
   const handleGoogle = async () => {
-    const res = await loginWithGoogle();
+    if (!selectedRole) {
+      toast.error("Please select your Role Card first!");
+      return;
+    }
+    if (selectedRole === "ADMIN") {
+      toast.error("Admin accounts cannot log in via social authentication.");
+      return;
+    }
+    const res = await loginWithGoogle(selectedRole);
     if (res.success && res.user) {
       const targetRoute = getDashboardRoute(res.user.role);
-      toast.success(`Signed in as ${res.user.role || "DONOR"} via Google ❤️`);
       navigate(targetRoute);
     }
   };
 
   const handleFacebook = async () => {
-    const res = await loginWithFacebook();
+    if (!selectedRole) {
+      toast.error("Please select your Role Card first!");
+      return;
+    }
+    if (selectedRole === "ADMIN") {
+      toast.error("Admin accounts cannot log in via social authentication.");
+      return;
+    }
+    const res = await loginWithFacebook(selectedRole);
     if (res.success && res.user) {
       const targetRoute = getDashboardRoute(res.user.role);
-      toast.success(`Signed in as ${res.user.role || "DONOR"} via Facebook ❤️`);
       navigate(targetRoute);
     }
   };
@@ -79,223 +164,224 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 md:p-8 relative z-10">
-      <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-        
-        {/* Left Side - BloodLink Hero Section (7 Cols) */}
-        <motion.div
-          initial={{ opacity: 0, x: -40 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="lg:col-span-7 space-y-8 hidden lg:block pr-6"
-        >
-          {/* Medical Pill Badge */}
-          <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-red-600/10 border border-red-500/30 text-red-400 text-xs font-semibold backdrop-blur-md glow-medical-red">
-            <HeartPulse className="w-4 h-4 text-red-500 animate-pulse" />
-            <span>BloodLink 4-Role RBAC Platform (Admin | Doctor | Blood Bank | Donor)</span>
-          </div>
+    <div className="min-h-screen w-full flex flex-col items-center justify-center p-4 md:p-8 relative z-10 space-y-8 max-w-6xl mx-auto">
+      
+      {/* Header Title */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center space-y-2 max-w-2xl"
+      >
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-600/10 border border-red-500/30 text-red-400 text-xs font-semibold backdrop-blur-md glow-medical-red">
+          <Heart className="w-4 h-4 text-red-500 fill-red-500 animate-pulse" />
+          <span>BloodLink Enterprise Multi-Role Authentication</span>
+        </div>
+        <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight">
+          Select Your Access Role
+        </h1>
+        <p className="text-sm text-gray-400">
+          Click your portal card to activate continuous security glow & sign in
+        </p>
+      </motion.div>
 
-          <h1 className="text-5xl font-extrabold tracking-tight text-white leading-tight">
-            Donate Blood. <br />
-            Save Lives. <br />
-            <span className="bg-gradient-to-r from-red-500 via-rose-400 to-amber-400 bg-clip-text text-transparent">
-              Every Second Matters.
-            </span>
-          </h1>
+      {/* 4 Animated Role Selection Cards */}
+      <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {rolesData.map((role) => {
+          const MainIcon = role.icon;
+          const BadgeIcon = role.badgeIcon;
+          const isSelected = selectedRole === role.id;
 
-          <p className="text-gray-300 text-lg max-w-xl leading-relaxed">
-            Automatic role detection instantly directs Admins, Doctors, Blood Banks, and Donors to their dedicated command centers.
-          </p>
+          return (
+            <TiltCard key={role.id}>
+              <motion.div
+                whileHover={{ scale: 1.03, y: -4 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => handleRoleSelect(role.id)}
+                className={`glass-card rounded-3xl p-6 border transition-all duration-300 cursor-pointer relative overflow-hidden flex flex-col justify-between h-56 ${
+                  isSelected
+                    ? `${role.glowClass} bg-white/10 shadow-2xl scale-[1.02]`
+                    : "border-white/10 hover:border-white/20"
+                }`}
+              >
+                {/* Selected Indicator Checkmark */}
+                {isSelected && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute top-4 right-4 w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                  </motion.div>
+                )}
 
-          {/* Animated Statistics Grid */}
-          <div className="grid grid-cols-2 gap-4 pt-2">
-            <motion.div
-              whileHover={{ y: -5 }}
-              className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md space-y-1.5 glass-card-hover"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center text-red-400">
-                  <Droplet className="w-5 h-5 fill-red-500" />
-                </div>
-                <div>
-                  <h3 className="text-white font-bold text-xl">25,000+</h3>
-                  <p className="text-xs text-gray-400">Registered Donors</p>
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              whileHover={{ y: -5 }}
-              className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md space-y-1.5 glass-card-hover"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400">
-                  <Building2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-white font-bold text-xl">800+</h3>
-                  <p className="text-xs text-gray-400">Connected Hospitals</p>
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              whileHover={{ y: -5 }}
-              className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md space-y-1.5 glass-card-hover"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-rose-500/20 flex items-center justify-center text-rose-400">
-                  <Activity className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-white font-bold text-xl">50,000+</h3>
-                  <p className="text-xs text-gray-400">Lives Saved</p>
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              whileHover={{ y: -5 }}
-              className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md space-y-1.5 glass-card-hover"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400">
-                  <Ambulance className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-white font-bold text-xl">24/7</h3>
-                  <p className="text-xs text-gray-400">Emergency Dispatch</p>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </motion.div>
-
-        {/* Right Side - Single Login Glass Card (5 Cols) */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="lg:col-span-5 w-full"
-        >
-          <TiltCard>
-            <div className="glass-card rounded-3xl p-8 space-y-6 shadow-2xl relative overflow-hidden border border-white/15">
-              
-              <div className="text-center space-y-2">
-                <div className="w-12 h-12 rounded-2xl shimmer-btn-red mx-auto flex items-center justify-center text-white shadow-xl glow-medical-red">
-                  <Droplet className="w-6 h-6 fill-white" />
-                </div>
-                <h2 className="text-3xl font-bold text-white tracking-tight">BloodLink Sign In</h2>
-                <p className="text-xs text-gray-400">System automatically detects your user role on login</p>
-              </div>
-
-              {/* Social Logins */}
-              <SocialLoginButtons
-                onGoogleLogin={handleGoogle}
-                onFacebookLogin={handleFacebook}
-                loading={isLoggingIn}
-              />
-
-              <div className="relative flex items-center justify-center">
-                <div className="w-full border-t border-white/10" />
-                <span className="absolute px-3 bg-[#09090b]/80 text-xs text-gray-400 uppercase tracking-wider backdrop-blur-md rounded-full border border-white/10">
-                  Or with email
-                </span>
-              </div>
-
-              {/* Login Form */}
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-300">Email or Username</label>
-                  <div className="relative">
-                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="user@bloodlink.org"
-                      {...register("usernameOrEmail", { required: "Username or email is required" })}
-                      className="w-full glass-input pl-10 pr-4 py-3 rounded-xl text-sm placeholder-gray-500"
-                    />
+                <div className="space-y-4">
+                  <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${role.color} flex items-center justify-center text-white shadow-xl relative`}>
+                    <MainIcon className="w-6 h-6" />
+                    <BadgeIcon className="w-3.5 h-3.5 absolute -bottom-1 -right-1 fill-white text-white" />
                   </div>
-                  {errors.usernameOrEmail && (
-                    <p className="text-xs text-red-400">{errors.usernameOrEmail.message}</p>
-                  )}
-                </div>
 
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-gray-300">Password</label>
-                    <button
-                      type="button"
-                      onClick={() => setShowForgotModal(true)}
-                      className="text-xs text-red-400 hover:text-red-300 transition-colors"
-                    >
-                      Forgot password?
-                    </button>
+                  <div>
+                    <h3 className="text-lg font-black text-white flex items-center gap-1.5">
+                      <span>{role.title}</span>
+                    </h3>
+                    <p className="text-xs text-gray-300 mt-1 leading-relaxed">{role.desc}</p>
                   </div>
-                  <div className="relative">
-                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      {...register("password", { required: "Password is required" })}
-                      className="w-full glass-input pl-10 pr-10 py-3 rounded-xl text-sm placeholder-gray-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  {errors.password && <p className="text-xs text-red-400">{errors.password.message}</p>}
                 </div>
 
-                <div className="flex items-center gap-2 pt-1">
-                  <input
-                    type="checkbox"
-                    id="remember"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 rounded border-gray-700 bg-white/5 text-red-600 focus:ring-red-500 cursor-pointer"
-                  />
-                  <label htmlFor="remember" className="text-xs text-gray-400 cursor-pointer">
-                    Remember me on this device
-                  </label>
+                <div className="pt-3 border-t border-white/10 flex items-center justify-between">
+                  <span className={`text-[11px] font-bold uppercase ${role.textColor}`}>
+                    {isSelected ? "Role Selected ●" : "Click to Select"}
+                  </span>
+                  <ArrowRight className={`w-4 h-4 transition-transform ${isSelected ? "translate-x-1 text-white" : "text-gray-500"}`} />
                 </div>
-
-                <motion.button
-                  type="submit"
-                  disabled={isLoggingIn}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full shimmer-btn-red py-3.5 rounded-xl text-white font-semibold text-sm shadow-xl flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                >
-                  {isLoggingIn ? (
-                    <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <span>Sign In & Detect Role</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </motion.button>
-
-              </form>
-
-              <div className="text-center pt-2 text-xs text-gray-400">
-                Not a member?{" "}
-                <Link to="/signup" className="text-red-400 hover:text-red-300 font-semibold underline underline-offset-4">
-                  Create Account
-                </Link>
-              </div>
-
-            </div>
-          </TiltCard>
-        </motion.div>
-
+              </motion.div>
+            </TiltCard>
+          );
+        })}
       </div>
+
+      {/* Smooth Expanding Login Form Card */}
+      <AnimatePresence mode="wait">
+        {selectedRole && (
+          <motion.div
+            key={selectedRole}
+            initial={{ opacity: 0, height: 0, scale: 0.95 }}
+            animate={{ opacity: 1, height: "auto", scale: 1 }}
+            exit={{ opacity: 0, height: 0, scale: 0.95 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="w-full max-w-lg"
+          >
+            <TiltCard>
+              <div className="glass-card rounded-3xl p-8 space-y-6 shadow-2xl border border-white/20 relative">
+                
+                <div className="text-center space-y-1">
+                  <span className="px-3 py-1 rounded-full bg-white/10 text-xs font-bold text-gray-200 border border-white/10">
+                    SELECTED ROLE: <span className="text-red-400 uppercase">{selectedRole}</span>
+                  </span>
+                  <h2 className="text-2xl font-bold text-white pt-2">Sign In to {selectedRole} Portal</h2>
+                  <p className="text-xs text-gray-400">Authenticating strictly against users with role '{selectedRole}'</p>
+                </div>
+
+                {/* Social Login Buttons (Disabled for Admin) */}
+                {selectedRole !== "ADMIN" && (
+                  <>
+                    <SocialLoginButtons
+                      onGoogleLogin={handleGoogle}
+                      onFacebookLogin={handleFacebook}
+                      loading={isLoggingIn}
+                    />
+
+                    <div className="relative flex items-center justify-center my-2">
+                      <div className="w-full border-t border-white/10" />
+                      <span className="absolute px-3 bg-[#09090b]/80 text-[10px] text-gray-400 uppercase tracking-wider backdrop-blur-md rounded-full border border-white/10">
+                        Or credentials
+                      </span>
+                    </div>
+                  </>
+                )}
+
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                  
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-300">Email or Username</label>
+                    <div className="relative">
+                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder={selectedRole === "ADMIN" ? "namanabrol777@gmail.com" : "user@bloodlink.org"}
+                        {...register("usernameOrEmail", { required: "Username or email is required" })}
+                        className="w-full glass-input pl-10 pr-4 py-3 rounded-xl text-sm placeholder-gray-500"
+                      />
+                    </div>
+                    {errors.usernameOrEmail && (
+                      <p className="text-xs text-red-400">{errors.usernameOrEmail.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-medium text-gray-300">Password</label>
+                      <button
+                        type="button"
+                        onClick={() => setShowForgotModal(true)}
+                        className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        {...register("password", { required: "Password is required" })}
+                        className="w-full glass-input pl-10 pr-10 py-3 rounded-xl text-sm placeholder-gray-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {errors.password && <p className="text-xs text-red-400">{errors.password.message}</p>}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="remember"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-700 bg-white/5 text-red-600 focus:ring-red-500 cursor-pointer"
+                      />
+                      <label htmlFor="remember" className="text-xs text-gray-400 cursor-pointer">
+                        Remember me
+                      </label>
+                    </div>
+
+                    {selectedRole === "ADMIN" && (
+                      <span className="text-[10px] text-purple-400 font-semibold">
+                        Default: namanabrol777@gmail.com
+                      </span>
+                    )}
+                  </div>
+
+                  <motion.button
+                    type="submit"
+                    disabled={isLoggingIn}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="w-full shimmer-btn-red py-3.5 rounded-xl text-white font-semibold text-sm shadow-xl flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {isLoggingIn ? (
+                      <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <span>Sign In as {selectedRole}</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </motion.button>
+
+                </form>
+
+                {selectedRole !== "ADMIN" && (
+                  <div className="text-center pt-2 text-xs text-gray-400">
+                    Need an account?{" "}
+                    <Link to="/signup" className="text-red-400 hover:text-red-300 font-semibold underline underline-offset-4">
+                      Create {selectedRole} Account
+                    </Link>
+                  </div>
+                )}
+
+              </div>
+            </TiltCard>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Forgot Password Modal */}
       <AnimatePresence>
@@ -318,7 +404,7 @@ const LoginPage = () => {
               >
                 <X className="w-5 h-5" />
               </button>
-              <h3 className="text-xl font-bold text-white">Reset BloodLink Password</h3>
+              <h3 className="text-xl font-bold text-white">Reset Password</h3>
               <p className="text-xs text-gray-400">
                 Enter your registered email address to receive password recovery instructions.
               </p>

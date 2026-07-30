@@ -40,6 +40,19 @@ export const signup = async (req, res) => {
       return res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
     }
 
+    const requestedRole = (role || "DONOR").toUpperCase();
+
+    // Restrict Public Admin Creation
+    if (requestedRole === "ADMIN") {
+      return res.status(403).json({
+        success: false,
+        message: "Admin accounts cannot be created via public registration. Contact system administration.",
+      });
+    }
+
+    const allowedRoles = ["DOCTOR", "BLOOD_BANK", "DONOR"];
+    const finalRole = allowedRoles.includes(requestedRole) ? requestedRole : "DONOR";
+
     const existingEmail = await User.findOne({ email: email.toLowerCase() });
     if (existingEmail) {
       return res.status(400).json({ success: false, message: "Email is already registered" });
@@ -50,19 +63,16 @@ export const signup = async (req, res) => {
       return res.status(400).json({ success: false, message: "Username is already taken" });
     }
 
+    // Bcrypt with 12 salt rounds
     const salt = await bcrypt.genSalt(12);
     const hashedPassword = await bcrypt.hash(password, salt);
-
-    const validRole = ["ADMIN", "DOCTOR", "BLOOD_BANK", "DONOR"].includes(role?.toUpperCase())
-      ? role.toUpperCase()
-      : "DONOR";
 
     const newUser = new User({
       username: username.trim(),
       email: email.toLowerCase().trim(),
       fullName: username.trim(),
       password: hashedPassword,
-      role: validRole,
+      role: finalRole,
       bloodGroup: bloodGroup || "O+",
       hospitalName: hospitalName || "",
       licenseNumber: licenseNumber || "",
@@ -75,7 +85,7 @@ export const signup = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: `Registered successfully as ${validRole}`,
+      message: `Registered successfully as ${finalRole}`,
       token,
       user: sanitizeUser(newUser),
     });
@@ -86,7 +96,7 @@ export const signup = async (req, res) => {
 };
 
 export const login = async (req, res) => {
-  const { usernameOrEmail, password } = req.body;
+  const { usernameOrEmail, password, role: selectedRole } = req.body;
 
   try {
     if (!usernameOrEmail || !password) {
@@ -103,6 +113,7 @@ export const login = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid credentials" });
     }
 
+    // If user registered via OAuth without password
     if (user.authProvider !== "local" && !user.password) {
       return res.status(400).json({
         success: false,
@@ -115,11 +126,24 @@ export const login = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid credentials" });
     }
 
+    // STRICT ROLE CHECK: Verify user's actual database role matches selected role
+    if (selectedRole) {
+      const userRole = user.role ? user.role.toUpperCase() : "DONOR";
+      const targetRole = selectedRole.toUpperCase();
+
+      if (userRole !== targetRole) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid credentials for the selected role.",
+        });
+      }
+    }
+
     const token = generateToken(user, res);
 
     return res.status(200).json({
       success: true,
-      message: "Logged in successfully",
+      message: `Logged in successfully as ${user.role}`,
       token,
       user: sanitizeUser(user),
     });
@@ -130,7 +154,7 @@ export const login = async (req, res) => {
 };
 
 export const googleAuth = async (req, res) => {
-  const { email, name, googleId, avatar } = req.body;
+  const { email, name, googleId, avatar, role: selectedRole } = req.body;
 
   try {
     if (!email) {
@@ -140,18 +164,30 @@ export const googleAuth = async (req, res) => {
     let user = await User.findOne({ email: email.toLowerCase().trim() });
 
     if (!user) {
+      const requestedRole = (selectedRole || "DONOR").toUpperCase();
+      const finalRole = ["DOCTOR", "BLOOD_BANK", "DONOR"].includes(requestedRole) ? requestedRole : "DONOR";
+
       const generatedUsername = (name || email.split("@")[0]).replace(/\s+/g, "").toLowerCase() + Math.floor(Math.random() * 1000);
       user = new User({
         username: generatedUsername,
         email: email.toLowerCase().trim(),
         fullName: name || generatedUsername,
         avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${generatedUsername}`,
-        role: "DONOR",
+        role: finalRole,
         bloodGroup: "O+",
         authProvider: "google",
         googleId: googleId || `google-${Date.now()}`,
       });
       await user.save();
+    } else if (selectedRole) {
+      // Validate role matching for social login
+      const userRole = user.role ? user.role.toUpperCase() : "DONOR";
+      if (userRole !== selectedRole.toUpperCase()) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid credentials for the selected role.",
+        });
+      }
     }
 
     const token = generateToken(user, res);
@@ -169,25 +205,36 @@ export const googleAuth = async (req, res) => {
 };
 
 export const facebookAuth = async (req, res) => {
-  const { email, name, facebookId, avatar } = req.body;
+  const { email, name, facebookId, avatar, role: selectedRole } = req.body;
 
   try {
     const targetEmail = email || `${facebookId || Date.now()}@facebook.com`;
     let user = await User.findOne({ email: targetEmail.toLowerCase().trim() });
 
     if (!user) {
+      const requestedRole = (selectedRole || "DONOR").toUpperCase();
+      const finalRole = ["DOCTOR", "BLOOD_BANK", "DONOR"].includes(requestedRole) ? requestedRole : "DONOR";
+
       const generatedUsername = (name || "donor").replace(/\s+/g, "").toLowerCase() + Math.floor(Math.random() * 1000);
       user = new User({
         username: generatedUsername,
         email: targetEmail.toLowerCase().trim(),
         fullName: name || generatedUsername,
         avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${generatedUsername}`,
-        role: "DONOR",
+        role: finalRole,
         bloodGroup: "O+",
         authProvider: "facebook",
         facebookId: facebookId || `facebook-${Date.now()}`,
       });
       await user.save();
+    } else if (selectedRole) {
+      const userRole = user.role ? user.role.toUpperCase() : "DONOR";
+      if (userRole !== selectedRole.toUpperCase()) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid credentials for the selected role.",
+        });
+      }
     }
 
     const token = generateToken(user, res);
