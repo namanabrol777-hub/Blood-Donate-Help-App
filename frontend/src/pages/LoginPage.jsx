@@ -16,7 +16,6 @@ import {
   ArrowRight,
   Sparkles,
   CheckCircle2,
-  Activity,
   Dna,
   X,
 } from "lucide-react";
@@ -36,7 +35,6 @@ const rolesData = [
     glowClass: "glow-biotech-purple border-indigo-400",
     textColor: "text-indigo-400",
     desc: "Platform Governance & AI Predictions",
-    hint: "Default Admin: namanabrol777@gmail.com",
   },
   {
     id: "DOCTOR",
@@ -86,16 +84,11 @@ const LoginPage = () => {
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors },
   } = useForm();
 
   const handleRoleSelect = (roleId) => {
     setSelectedRole(roleId);
-    if (roleId === "ADMIN") {
-      setValue("usernameOrEmail", "namanabrol777@gmail.com");
-      setValue("password", "namanabrol");
-    }
   };
 
   const onSubmit = async (data) => {
@@ -163,7 +156,7 @@ const LoginPage = () => {
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center p-4 md:p-8 relative z-10 space-y-8 max-w-6xl mx-auto">
       
-      {/* VisionOS / JARVIS Biotech Header */}
+      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -177,11 +170,11 @@ const LoginPage = () => {
           BloodLink Command OS
         </h1>
         <p className="text-sm text-gray-300">
-          Select your portal to initialize 60FPS 3D DNA Double Helix security matrix & role login
+          Select your portal to initialize security matrix & sign in to your dashboard
         </p>
       </motion.div>
 
-      {/* 4 Interactive Holographic Role Cards */}
+      {/* 4 Animated Glass Role Cards */}
       <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {rolesData.map((role) => {
           const MainIcon = role.icon;
@@ -254,7 +247,7 @@ const LoginPage = () => {
                   <span className="px-3.5 py-1 rounded-full bg-white/10 text-xs font-bold text-gray-200 border border-white/10">
                     PORTAL ACTIVE: <span className="text-red-400 uppercase">{selectedRole}</span>
                   </span>
-                  <h2 className="text-2xl font-bold text-white pt-2">Initialize {selectedRole} Session</h2>
+                  <h2 className="text-2xl font-bold text-white pt-2">Sign In to {selectedRole} Portal</h2>
                   <p className="text-xs text-gray-400">Authenticating against role context '{selectedRole}'</p>
                 </div>
 
@@ -283,7 +276,7 @@ const LoginPage = () => {
                       <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                       <input
                         type="text"
-                        placeholder={selectedRole === "ADMIN" ? "namanabrol777@gmail.com" : "user@bloodlink.org"}
+                        placeholder="email@example.com"
                         {...register("usernameOrEmail", { required: "Username or email is required" })}
                         className="w-full glass-input pl-10 pr-4 py-3 rounded-xl text-sm placeholder-gray-500"
                       />
@@ -336,12 +329,6 @@ const LoginPage = () => {
                         Remember session
                       </label>
                     </div>
-
-                    {selectedRole === "ADMIN" && (
-                      <span className="text-[10px] text-purple-400 font-semibold">
-                        Default: namanabrol777@gmail.com
-                      </span>
-                    )}
                   </div>
 
                   <motion.button
@@ -406,7 +393,7 @@ const LoginPage = () => {
               <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
                 <input
                   type="email"
-                  placeholder="user@bloodlink.org"
+                  placeholder="user@example.com"
                   value={resetEmail}
                   onChange={(e) => setResetEmail(e.target.value)}
                   className="w-full glass-input px-4 py-3 rounded-xl text-sm"
