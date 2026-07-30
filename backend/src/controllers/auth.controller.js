@@ -2,31 +2,38 @@ import { generateToken } from "../lib/utils.js";
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 
-// Helper to format user response safely with role metadata
-const sanitizeUser = (user) => ({
-  _id: user._id,
-  username: user.username,
-  email: user.email,
-  fullName: user.fullName || user.username,
-  avatar: user.avatar,
-  role: user.role ? user.role.toUpperCase() : "DONOR",
-  isVerified: user.isVerified ?? true,
-  bloodGroup: user.bloodGroup || "O+",
-  isAvailableForDonation: user.isAvailableForDonation ?? true,
-  emergencyContact: user.emergencyContact || "",
-  donationsCount: user.donationsCount || 0,
-  donationStreak: user.donationStreak || 1,
-  digitalCardId: user.digitalCardId || `BL-DONOR-${Math.floor(100000 + Math.random() * 900000)}`,
-  hospitalName: user.hospitalName || "",
-  licenseNumber: user.licenseNumber || "",
-  specialty: user.specialty || "General Physician",
-  bankName: user.bankName || "",
-  address: user.address || "",
-  bio: user.bio,
-  jobTitle: user.jobTitle,
-  authProvider: user.authProvider,
-  createdAt: user.createdAt,
-});
+// Helper to format user response safely with activeRole & roles array
+const sanitizeUser = (user, activeRoleOverride) => {
+  const currentActiveRole = activeRoleOverride || user.activeRole || user.role || "DONOR";
+  const userRoles = user.roles && user.roles.length > 0 ? user.roles : [currentActiveRole];
+
+  return {
+    _id: user._id,
+    username: user.username,
+    email: user.email,
+    fullName: user.fullName || user.username,
+    avatar: user.avatar,
+    role: currentActiveRole.toUpperCase(),
+    activeRole: currentActiveRole.toUpperCase(),
+    roles: userRoles.map((r) => r.toUpperCase()),
+    isVerified: user.isVerified ?? true,
+    bloodGroup: user.bloodGroup || "O+",
+    isAvailableForDonation: user.isAvailableForDonation ?? true,
+    emergencyContact: user.emergencyContact || "",
+    donationsCount: user.donationsCount || 0,
+    donationStreak: user.donationStreak || 1,
+    digitalCardId: user.digitalCardId || `BL-DONOR-${Math.floor(100000 + Math.random() * 900000)}`,
+    hospitalName: user.hospitalName || "St. Jude Central Hospital",
+    licenseNumber: user.licenseNumber || "MD-99201",
+    specialty: user.specialty || "General Physician",
+    bankName: user.bankName || "Metropolitan Central Blood Bank",
+    address: user.address || "",
+    bio: user.bio,
+    jobTitle: user.jobTitle,
+    authProvider: user.authProvider,
+    createdAt: user.createdAt,
+  };
+};
 
 export const signup = async (req, res) => {
   const { username, email, password, role, bloodGroup, hospitalName, licenseNumber, bankName } = req.body;
@@ -73,6 +80,7 @@ export const signup = async (req, res) => {
       fullName: username.trim(),
       password: hashedPassword,
       role: finalRole,
+      roles: [finalRole],
       bloodGroup: bloodGroup || "O+",
       hospitalName: hospitalName || "",
       licenseNumber: licenseNumber || "",
@@ -81,13 +89,13 @@ export const signup = async (req, res) => {
     });
 
     await newUser.save();
-    const token = generateToken(newUser, res);
+    const token = generateToken(newUser, finalRole, res);
 
     return res.status(201).json({
       success: true,
       message: `Registered successfully as ${finalRole}`,
       token,
-      user: sanitizeUser(newUser),
+      user: sanitizeUser(newUser, finalRole),
     });
   } catch (error) {
     console.error("Error in signup controller:", error);
@@ -96,12 +104,14 @@ export const signup = async (req, res) => {
 };
 
 export const login = async (req, res) => {
-  const { usernameOrEmail, password, role: selectedRole } = req.body;
+  const { usernameOrEmail, password, selectedRole, role } = req.body;
 
   try {
     if (!usernameOrEmail || !password) {
       return res.status(400).json({ success: false, message: "Username/Email and password are required" });
     }
+
+    const targetRole = (selectedRole || role || "DONOR").toUpperCase();
 
     const query = usernameOrEmail.includes("@")
       ? { email: usernameOrEmail.toLowerCase().trim() }
@@ -113,7 +123,6 @@ export const login = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid credentials" });
     }
 
-    // If user registered via OAuth without password
     if (user.authProvider !== "local" && !user.password) {
       return res.status(400).json({
         success: false,
@@ -126,26 +135,24 @@ export const login = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid credentials" });
     }
 
-    // STRICT ROLE CHECK: Verify user's actual database role matches selected role
-    if (selectedRole) {
-      const userRole = user.role ? user.role.toUpperCase() : "DONOR";
-      const targetRole = selectedRole.toUpperCase();
+    // MULTI-ROLE VALIDATION: Check if user's roles array contains targetRole
+    const userRoles = user.roles && user.roles.length > 0 ? user.roles.map((r) => r.toUpperCase()) : [user.role.toUpperCase()];
 
-      if (userRole !== targetRole) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid credentials for the selected role.",
-        });
-      }
+    if (!userRoles.includes(targetRole)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid credentials for the selected role.",
+      });
     }
 
-    const token = generateToken(user, res);
+    // Generate token for the active role selected
+    const token = generateToken(user, targetRole, res);
 
     return res.status(200).json({
       success: true,
-      message: `Logged in successfully as ${user.role}`,
+      message: `Logged in successfully as ${targetRole}`,
       token,
-      user: sanitizeUser(user),
+      user: sanitizeUser(user, targetRole),
     });
   } catch (error) {
     console.error("Error in login controller:", error);
@@ -154,18 +161,18 @@ export const login = async (req, res) => {
 };
 
 export const googleAuth = async (req, res) => {
-  const { email, name, googleId, avatar, role: selectedRole } = req.body;
+  const { email, name, googleId, avatar, selectedRole, role } = req.body;
 
   try {
     if (!email) {
       return res.status(400).json({ success: false, message: "Email is required for Google OAuth" });
     }
 
+    const targetRole = (selectedRole || role || "DONOR").toUpperCase();
     let user = await User.findOne({ email: email.toLowerCase().trim() });
 
     if (!user) {
-      const requestedRole = (selectedRole || "DONOR").toUpperCase();
-      const finalRole = ["DOCTOR", "BLOOD_BANK", "DONOR"].includes(requestedRole) ? requestedRole : "DONOR";
+      const finalRole = ["DOCTOR", "BLOOD_BANK", "DONOR"].includes(targetRole) ? targetRole : "DONOR";
 
       const generatedUsername = (name || email.split("@")[0]).replace(/\s+/g, "").toLowerCase() + Math.floor(Math.random() * 1000);
       user = new User({
@@ -174,15 +181,15 @@ export const googleAuth = async (req, res) => {
         fullName: name || generatedUsername,
         avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${generatedUsername}`,
         role: finalRole,
+        roles: [finalRole],
         bloodGroup: "O+",
         authProvider: "google",
         googleId: googleId || `google-${Date.now()}`,
       });
       await user.save();
-    } else if (selectedRole) {
-      // Validate role matching for social login
-      const userRole = user.role ? user.role.toUpperCase() : "DONOR";
-      if (userRole !== selectedRole.toUpperCase()) {
+    } else {
+      const userRoles = user.roles && user.roles.length > 0 ? user.roles.map((r) => r.toUpperCase()) : [user.role.toUpperCase()];
+      if (!userRoles.includes(targetRole)) {
         return res.status(400).json({
           success: false,
           message: "Invalid credentials for the selected role.",
@@ -190,13 +197,13 @@ export const googleAuth = async (req, res) => {
       }
     }
 
-    const token = generateToken(user, res);
+    const token = generateToken(user, targetRole, res);
 
     return res.status(200).json({
       success: true,
       message: "Google authentication successful",
       token,
-      user: sanitizeUser(user),
+      user: sanitizeUser(user, targetRole),
     });
   } catch (error) {
     console.error("Error in Google Auth controller:", error);
@@ -205,15 +212,15 @@ export const googleAuth = async (req, res) => {
 };
 
 export const facebookAuth = async (req, res) => {
-  const { email, name, facebookId, avatar, role: selectedRole } = req.body;
+  const { email, name, facebookId, avatar, selectedRole, role } = req.body;
 
   try {
     const targetEmail = email || `${facebookId || Date.now()}@facebook.com`;
+    const targetRole = (selectedRole || role || "DONOR").toUpperCase();
     let user = await User.findOne({ email: targetEmail.toLowerCase().trim() });
 
     if (!user) {
-      const requestedRole = (selectedRole || "DONOR").toUpperCase();
-      const finalRole = ["DOCTOR", "BLOOD_BANK", "DONOR"].includes(requestedRole) ? requestedRole : "DONOR";
+      const finalRole = ["DOCTOR", "BLOOD_BANK", "DONOR"].includes(targetRole) ? targetRole : "DONOR";
 
       const generatedUsername = (name || "donor").replace(/\s+/g, "").toLowerCase() + Math.floor(Math.random() * 1000);
       user = new User({
@@ -222,14 +229,15 @@ export const facebookAuth = async (req, res) => {
         fullName: name || generatedUsername,
         avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${generatedUsername}`,
         role: finalRole,
+        roles: [finalRole],
         bloodGroup: "O+",
         authProvider: "facebook",
         facebookId: facebookId || `facebook-${Date.now()}`,
       });
       await user.save();
-    } else if (selectedRole) {
-      const userRole = user.role ? user.role.toUpperCase() : "DONOR";
-      if (userRole !== selectedRole.toUpperCase()) {
+    } else {
+      const userRoles = user.roles && user.roles.length > 0 ? user.roles.map((r) => r.toUpperCase()) : [user.role.toUpperCase()];
+      if (!userRoles.includes(targetRole)) {
         return res.status(400).json({
           success: false,
           message: "Invalid credentials for the selected role.",
@@ -237,13 +245,13 @@ export const facebookAuth = async (req, res) => {
       }
     }
 
-    const token = generateToken(user, res);
+    const token = generateToken(user, targetRole, res);
 
     return res.status(200).json({
       success: true,
       message: "Facebook authentication successful",
       token,
-      user: sanitizeUser(user),
+      user: sanitizeUser(user, targetRole),
     });
   } catch (error) {
     console.error("Error in Facebook Auth controller:", error);
@@ -265,7 +273,7 @@ export const checkAuth = (req, res) => {
   try {
     return res.status(200).json({
       success: true,
-      user: sanitizeUser(req.user),
+      user: sanitizeUser(req.user, req.user.activeRole),
     });
   } catch (error) {
     console.error("Error in checkAuth controller:", error);
@@ -296,7 +304,7 @@ export const updateProfile = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Profile Updated Successfully!",
-      user: sanitizeUser(updatedUser),
+      user: sanitizeUser(updatedUser, req.user.activeRole),
     });
   } catch (error) {
     console.error("Error in update profile:", error);

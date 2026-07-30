@@ -1,11 +1,15 @@
 import jwt from "jsonwebtoken";
 
-export const generateToken = (user, res) => {
-  // Minimal secure JWT payload containing only userId, role, and email
+export const generateToken = (user, activeRole, res) => {
+  // Secure JWT payload featuring activeRole & roles array
+  const currentActiveRole = activeRole || user.activeRole || user.role || "DONOR";
+  const userRoles = user.roles && user.roles.length > 0 ? user.roles : [currentActiveRole];
+
   const payload = {
     userId: user._id,
-    role: user.role || "DONOR",
     email: user.email,
+    activeRole: currentActiveRole,
+    roles: userRoles,
   };
 
   const secret = process.env.JWT_SECRET || "super-secret-jwt-key-change-in-prod";

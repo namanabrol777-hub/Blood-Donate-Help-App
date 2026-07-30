@@ -1,13 +1,10 @@
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
 
+// Middleware to verify JWT token & attach user with activeRole to request
 export const protectRoute = async (req, res, next) => {
   try {
-    let token = req.cookies?.jwt;
-
-    if (!token && req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
-      token = req.headers.authorization.split(" ")[1];
-    }
+    const token = req.cookies.jwt || req.headers.authorization?.split(" ")[1];
 
     if (!token) {
       return res.status(401).json({ success: false, message: "Unauthorized - No Token Provided" });
@@ -16,41 +13,41 @@ export const protectRoute = async (req, res, next) => {
     const secret = process.env.JWT_SECRET || "super-secret-jwt-key-change-in-prod";
     const decoded = jwt.verify(token, secret);
 
-    if (!decoded || !decoded.userId) {
+    if (!decoded) {
       return res.status(401).json({ success: false, message: "Unauthorized - Invalid Token" });
     }
 
     const user = await User.findById(decoded.userId).select("-password");
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res.status(404).json({ success: false, message: "User Not Found" });
     }
 
     req.user = user;
+    // Set activeRole from decoded JWT token or fallback to primary role
+    req.user.activeRole = (decoded.activeRole || user.role || "DONOR").toUpperCase();
+
     next();
   } catch (error) {
-    if (error.name === "TokenExpiredError") {
-      return res.status(401).json({ success: false, message: "Token Expired - Please log in again" });
-    }
     console.error("Error in protectRoute middleware:", error.message);
-    return res.status(401).json({ success: false, message: "Unauthorized - Invalid or Expired Token" });
+    return res.status(401).json({ success: false, message: "Unauthorized - Session Expired" });
   }
 };
 
-// Role-Based Access Control (RBAC) Middleware
+// Middleware to enforce active role access control (RBAC)
 export const authorizeRoles = (...allowedRoles) => {
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ success: false, message: "Unauthorized - User context missing" });
+      return res.status(401).json({ success: false, message: "Unauthorized Access" });
     }
 
-    const userRole = req.user.role ? req.user.role.toUpperCase() : "DONOR";
-    const normalizedAllowedRoles = allowedRoles.map((r) => r.toUpperCase());
+    const userActiveRole = (req.user.activeRole || req.user.role || "DONOR").toUpperCase();
+    const formattedAllowed = allowedRoles.map((r) => r.toUpperCase());
 
-    if (!normalizedAllowedRoles.includes(userRole)) {
+    if (!formattedAllowed.includes(userActiveRole)) {
       return res.status(403).json({
         success: false,
-        message: `Forbidden - Role '${userRole}' is not authorized to access this resource`,
+        message: `Forbidden - Active role '${userActiveRole}' cannot access this dashboard. Required: [${formattedAllowed.join(", ")}]`,
       });
     }
 
