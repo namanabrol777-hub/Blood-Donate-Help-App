@@ -16,6 +16,8 @@ import {
   ArrowRight,
   Sparkles,
   CheckCircle2,
+  Activity,
+  Dna,
   X,
 } from "lucide-react";
 import { useAuthStore, getDashboardRoute } from "../stores/useAuthStore";
@@ -31,10 +33,9 @@ const rolesData = [
     badgeIcon: Crown,
     color: "from-indigo-600 to-purple-600",
     borderColor: "border-indigo-500/50",
-    glowClass: "glow-primary border-indigo-400",
+    glowClass: "glow-biotech-purple border-indigo-400",
     textColor: "text-indigo-400",
-    bgAlpha: "bg-indigo-500/10",
-    desc: "Platform Administration",
+    desc: "Platform Governance & AI Predictions",
     hint: "Default Admin: namanabrol777@gmail.com",
   },
   {
@@ -44,10 +45,9 @@ const rolesData = [
     badgeIcon: Sparkles,
     color: "from-blue-600 to-cyan-500",
     borderColor: "border-blue-500/50",
-    glowClass: "glow-medical-blue border-blue-400",
+    glowClass: "glow-biotech-blue border-blue-400",
     textColor: "text-blue-400",
-    bgAlpha: "bg-blue-500/10",
-    desc: "Manage Patients & Blood Requests",
+    desc: "Manage Patients & Emergency Blood Requests",
   },
   {
     id: "BLOOD_BANK",
@@ -56,10 +56,9 @@ const rolesData = [
     badgeIcon: Droplet,
     color: "from-red-600 to-rose-600",
     borderColor: "border-red-500/50",
-    glowClass: "glow-medical-red border-red-400",
+    glowClass: "glow-biotech-red border-red-400",
     textColor: "text-red-400",
-    bgAlpha: "bg-red-500/10",
-    desc: "Manage Blood Inventory & Donations",
+    desc: "Manage Blood Unit Inventory & Dispatch",
   },
   {
     id: "DONOR",
@@ -68,10 +67,9 @@ const rolesData = [
     badgeIcon: Droplet,
     color: "from-rose-500 to-pink-600",
     borderColor: "border-rose-500/50",
-    glowClass: "glow-medical-accent border-rose-400",
+    glowClass: "glow-biotech-cyan border-rose-400",
     textColor: "text-rose-400",
-    bgAlpha: "bg-rose-500/10",
-    desc: "Donate Blood & Save Lives",
+    desc: "Donate Blood & Track Lifesaving Impact",
   },
 ];
 
@@ -94,7 +92,6 @@ const LoginPage = () => {
 
   const handleRoleSelect = (roleId) => {
     setSelectedRole(roleId);
-    // Quick helper if user selects Admin, prefill demo credentials for convenience
     if (roleId === "ADMIN") {
       setValue("usernameOrEmail", "namanabrol777@gmail.com");
       setValue("password", "namanabrol");
@@ -103,7 +100,7 @@ const LoginPage = () => {
 
   const onSubmit = async (data) => {
     if (!selectedRole) {
-      toast.error("Please select your Role Card first!");
+      toast.error("Please select your Portal Card first!");
       return;
     }
 
@@ -122,7 +119,7 @@ const LoginPage = () => {
 
   const handleGoogle = async () => {
     if (!selectedRole) {
-      toast.error("Please select your Role Card first!");
+      toast.error("Please select your Portal Card first!");
       return;
     }
     if (selectedRole === "ADMIN") {
@@ -138,7 +135,7 @@ const LoginPage = () => {
 
   const handleFacebook = async () => {
     if (!selectedRole) {
-      toast.error("Please select your Role Card first!");
+      toast.error("Please select your Portal Card first!");
       return;
     }
     if (selectedRole === "ADMIN") {
@@ -166,25 +163,25 @@ const LoginPage = () => {
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center p-4 md:p-8 relative z-10 space-y-8 max-w-6xl mx-auto">
       
-      {/* Header Title */}
+      {/* VisionOS / JARVIS Biotech Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-center space-y-2 max-w-2xl"
+        className="text-center space-y-3 max-w-3xl"
       >
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-600/10 border border-red-500/30 text-red-400 text-xs font-semibold backdrop-blur-md glow-medical-red">
-          <Heart className="w-4 h-4 text-red-500 fill-red-500 animate-pulse" />
-          <span>BloodLink Enterprise Multi-Role Authentication</span>
+        <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-red-600/10 border border-red-500/30 text-red-400 text-xs font-semibold backdrop-blur-md glow-biotech-red">
+          <Dna className="w-4 h-4 text-red-500 animate-spin-slow" />
+          <span>Biotechnology AI Emergency Operating System v4.0</span>
         </div>
-        <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight">
-          Select Your Access Role
+        <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight leading-tight">
+          BloodLink Command OS
         </h1>
-        <p className="text-sm text-gray-400">
-          Click your portal card to activate continuous security glow & sign in
+        <p className="text-sm text-gray-300">
+          Select your portal to initialize 60FPS 3D DNA Double Helix security matrix & role login
         </p>
       </motion.div>
 
-      {/* 4 Animated Role Selection Cards */}
+      {/* 4 Interactive Holographic Role Cards */}
       <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {rolesData.map((role) => {
           const MainIcon = role.icon;
@@ -197,13 +194,12 @@ const LoginPage = () => {
                 whileHover={{ scale: 1.03, y: -4 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => handleRoleSelect(role.id)}
-                className={`glass-card rounded-3xl p-6 border transition-all duration-300 cursor-pointer relative overflow-hidden flex flex-col justify-between h-56 ${
+                className={`glass-card rounded-3xl p-6 border transition-all duration-300 cursor-pointer relative overflow-hidden flex flex-col justify-between h-60 ${
                   isSelected
                     ? `${role.glowClass} bg-white/10 shadow-2xl scale-[1.02]`
                     : "border-white/10 hover:border-white/20"
                 }`}
               >
-                {/* Selected Indicator Checkmark */}
                 {isSelected && (
                   <motion.div
                     initial={{ scale: 0 }}
@@ -230,7 +226,7 @@ const LoginPage = () => {
 
                 <div className="pt-3 border-t border-white/10 flex items-center justify-between">
                   <span className={`text-[11px] font-bold uppercase ${role.textColor}`}>
-                    {isSelected ? "Role Selected ●" : "Click to Select"}
+                    {isSelected ? "Active Glow ●" : "Click to Select"}
                   </span>
                   <ArrowRight className={`w-4 h-4 transition-transform ${isSelected ? "translate-x-1 text-white" : "text-gray-500"}`} />
                 </div>
@@ -240,7 +236,7 @@ const LoginPage = () => {
         })}
       </div>
 
-      {/* Smooth Expanding Login Form Card */}
+      {/* Expanding Form Card */}
       <AnimatePresence mode="wait">
         {selectedRole && (
           <motion.div
@@ -252,17 +248,16 @@ const LoginPage = () => {
             className="w-full max-w-lg"
           >
             <TiltCard>
-              <div className="glass-card rounded-3xl p-8 space-y-6 shadow-2xl border border-white/20 relative">
+              <div className="glass-card rounded-3xl p-8 space-y-6 shadow-2xl border border-white/20 relative backdrop-blur-2xl">
                 
                 <div className="text-center space-y-1">
-                  <span className="px-3 py-1 rounded-full bg-white/10 text-xs font-bold text-gray-200 border border-white/10">
-                    SELECTED ROLE: <span className="text-red-400 uppercase">{selectedRole}</span>
+                  <span className="px-3.5 py-1 rounded-full bg-white/10 text-xs font-bold text-gray-200 border border-white/10">
+                    PORTAL ACTIVE: <span className="text-red-400 uppercase">{selectedRole}</span>
                   </span>
-                  <h2 className="text-2xl font-bold text-white pt-2">Sign In to {selectedRole} Portal</h2>
-                  <p className="text-xs text-gray-400">Authenticating strictly against users with role '{selectedRole}'</p>
+                  <h2 className="text-2xl font-bold text-white pt-2">Initialize {selectedRole} Session</h2>
+                  <p className="text-xs text-gray-400">Authenticating against role context '{selectedRole}'</p>
                 </div>
 
-                {/* Social Login Buttons (Disabled for Admin) */}
                 {selectedRole !== "ADMIN" && (
                   <>
                     <SocialLoginButtons
@@ -273,7 +268,7 @@ const LoginPage = () => {
 
                     <div className="relative flex items-center justify-center my-2">
                       <div className="w-full border-t border-white/10" />
-                      <span className="absolute px-3 bg-[#09090b]/80 text-[10px] text-gray-400 uppercase tracking-wider backdrop-blur-md rounded-full border border-white/10">
+                      <span className="absolute px-3 bg-[#05070d]/80 text-[10px] text-gray-400 uppercase tracking-wider backdrop-blur-md rounded-full border border-white/10">
                         Or credentials
                       </span>
                     </div>
@@ -338,7 +333,7 @@ const LoginPage = () => {
                         className="w-4 h-4 rounded border-gray-700 bg-white/5 text-red-600 focus:ring-red-500 cursor-pointer"
                       />
                       <label htmlFor="remember" className="text-xs text-gray-400 cursor-pointer">
-                        Remember me
+                        Remember session
                       </label>
                     </div>
 
@@ -360,7 +355,7 @@ const LoginPage = () => {
                       <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     ) : (
                       <>
-                        <span>Sign In as {selectedRole}</span>
+                        <span>Initialize {selectedRole} Portal</span>
                         <ArrowRight className="w-4 h-4" />
                       </>
                     )}
@@ -390,7 +385,7 @@ const LoginPage = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 z-50"
           >
             <motion.div
               initial={{ scale: 0.9, y: 20 }}
