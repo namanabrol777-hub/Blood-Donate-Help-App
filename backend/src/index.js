@@ -7,6 +7,7 @@ import rateLimit from "express-rate-limit";
 
 import { connectDB } from "./lib/db.js";
 import authRoutes from "./routes/auth.route.js";
+import donorRoutes from "./routes/donor.route.js";
 import reportRoutes from "./routes/report.route.js";
 import appointmentRoutes from "./routes/appointment.route.js";
 import bloodBankRoutes from "./routes/bloodBank.route.js";
@@ -14,34 +15,25 @@ import bloodBankRoutes from "./routes/bloodBank.route.js";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5000;
 
 // Security Headers with Helmet
 app.use(
   helmet({
-    contentSecurityPolicy: false, // Allowed for cross-origin resources
+    contentSecurityPolicy: false,
     crossOriginResourcePolicy: { policy: "cross-origin" },
   })
 );
 
 // Rate Limiting Security
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200, // limit each IP to 200 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 300,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: "Too many requests from this IP, please try again later." },
 });
 app.use("/api/", limiter);
-
-// Strict Rate Limiting for Auth Endpoints
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 30, // 30 login/register attempts per 15 minutes
-  message: { success: false, message: "Too many login/register attempts. Please wait 15 minutes." },
-});
-app.use("/api/auth/login", authLimiter);
-app.use("/api/auth/register", authLimiter);
 
 // Express Parsers
 app.use(express.json({ limit: "10mb" }));
@@ -62,6 +54,7 @@ app.options("*", cors());
 
 // API Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/donor", donorRoutes);
 app.use("/api/report", reportRoutes);
 app.use("/api/appointment", appointmentRoutes);
 app.use("/api/bloodBank", bloodBankRoutes);

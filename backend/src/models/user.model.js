@@ -37,13 +37,6 @@ const userSchema = new mongoose.Schema(
       enum: ["ADMIN", "DOCTOR", "BLOOD_BANK", "DONOR"],
       default: "DONOR",
     },
-    // Multi-role support for single account authorization across multiple portals
-    roles: {
-      type: [String],
-      default: function () {
-        return [this.role || "DONOR"];
-      },
-    },
     isVerified: {
       type: Boolean,
       default: function () {
@@ -128,16 +121,6 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
-// Pre-save hook ensuring `roles` includes primary `role`
-userSchema.pre("save", function (next) {
-  if (this.role && (!this.roles || this.roles.length === 0)) {
-    this.roles = [this.role];
-  } else if (this.role && !this.roles.includes(this.role)) {
-    this.roles.push(this.role);
-  }
-  next();
-});
 
 const User = mongoose.model("User", userSchema);
 

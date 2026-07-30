@@ -1,15 +1,10 @@
 import { create } from "zustand";
-import axios from "axios";
+import { axiosInstance } from "../lib/axios.js";
 import toast from "react-hot-toast";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-
-axios.defaults.withCredentials = true;
-
-// Helper to determine dashboard path based on activeRole
-export const getDashboardRoute = (roleOrActive) => {
-  const normalized = (roleOrActive || "DONOR").toUpperCase();
-  switch (normalized) {
+export const getDashboardRoute = (role) => {
+  const normalizedRole = role ? role.toUpperCase() : "DONOR";
+  switch (normalizedRole) {
     case "ADMIN":
       return "/admin/dashboard";
     case "DOCTOR":
@@ -23,112 +18,151 @@ export const getDashboardRoute = (roleOrActive) => {
 };
 
 export const useAuthStore = create((set, get) => ({
-  authUser: null,
-  isSigningUp: false,
-  isLoggingIn: false,
+  authUser: JSON.parse(localStorage.getItem("authUser")) || null,
+  token: localStorage.getItem("token") || null,
   isCheckingAuth: true,
+  isLoggingIn: false,
+  isSigningUp: false,
+  isUpdatingProfile: false,
 
   checkAuth: async () => {
+    set({ isCheckingAuth: true });
     try {
-      const res = await axios.get(`${API_URL}/auth/check`);
-      set({ authUser: res.data.user, isCheckingAuth: false });
+      const res = await axiosInstance.get("/auth/check");
+      if (res.data.success) {
+        set({ authUser: res.data.user });
+        localStorage.setItem("authUser", JSON.stringify(res.data.user));
+      }
     } catch (error) {
-      set({ authUser: null, isCheckingAuth: false });
+      console.log("Auth check verification failed");
+      set({ authUser: null, token: null });
+      localStorage.removeItem("authUser");
+      localStorage.removeItem("token");
+    } finally {
+      set({ isCheckingAuth: false });
     }
   },
 
   signup: async (data) => {
     set({ isSigningUp: true });
     try {
-      const res = await axios.post(`${API_URL}/auth/signup`, data);
-      set({ authUser: res.data.user, isSigningUp: false });
-      return { success: true, user: res.data.user };
+      const res = await axiosInstance.post("/auth/register", data);
+      if (res.data.success) {
+        set({ authUser: res.data.user, token: res.data.token });
+        localStorage.setItem("authUser", JSON.stringify(res.data.user));
+        localStorage.setItem("token", res.data.token);
+        toast.success(res.data.message || "Registered successfully!");
+        return { success: true, user: res.data.user };
+      }
     } catch (error) {
-      const message = error.response?.data?.message || "Signup failed";
-      toast.error(message);
+      const msg = error.response?.data?.message || "Registration failed";
+      toast.error(msg);
+      return { success: false };
+    } finally {
       set({ isSigningUp: false });
-      return { success: false, message };
     }
   },
 
   login: async (data) => {
     set({ isLoggingIn: true });
     try {
-      const res = await axios.post(`${API_URL}/auth/login`, data);
-      set({ authUser: res.data.user, isLoggingIn: false });
-      return { success: true, user: res.data.user };
+      const res = await axiosInstance.post("/auth/login", data);
+      if (res.data.success) {
+        set({ authUser: res.data.user, token: res.data.token });
+        localStorage.setItem("authUser", JSON.stringify(res.data.user));
+        localStorage.setItem("token", res.data.token);
+        toast.success(`Welcome back, ${res.data.user.username}!`);
+        return { success: true, user: res.data.user };
+      }
     } catch (error) {
-      const message = error.response?.data?.message || "Login failed";
-      toast.error(message);
+      const msg = error.response?.data?.message || "Invalid credentials";
+      toast.error(msg);
+      return { success: false };
+    } finally {
       set({ isLoggingIn: false });
-      return { success: false, message };
     }
   },
 
-  loginWithGoogle: async (selectedRole) => {
+  loginWithGoogle: async () => {
     set({ isLoggingIn: true });
     try {
-      const mockGooglePayload = {
-        email: "googleuser@bloodlink.org",
-        name: "Google Hero Donor",
-        googleId: "google-123456",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=googleuser",
-        selectedRole: selectedRole || "DONOR",
+      const dummyGooglePayload = {
+        email: `donor_${Math.floor(Math.random() * 1000)}@gmail.com`,
+        name: "Google Donor",
+        googleId: `google_${Date.now()}`,
+        avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=256",
       };
-      const res = await axios.post(`${API_URL}/auth/google`, mockGooglePayload);
-      set({ authUser: res.data.user, isLoggingIn: false });
-      toast.success("Signed in with Google!");
-      return { success: true, user: res.data.user };
+
+      const res = await axiosInstance.post("/auth/google", dummyGooglePayload);
+      if (res.data.success) {
+        set({ authUser: res.data.user, token: res.data.token });
+        localStorage.setItem("authUser", JSON.stringify(res.data.user));
+        localStorage.setItem("token", res.data.token);
+        toast.success("Signed in with Google!");
+        return { success: true, user: res.data.user };
+      }
     } catch (error) {
-      const message = error.response?.data?.message || "Google Auth Failed";
-      toast.error(message);
+      toast.error("Google authentication failed");
+      return { success: false };
+    } finally {
       set({ isLoggingIn: false });
-      return { success: false, message };
     }
   },
 
-  loginWithFacebook: async (selectedRole) => {
+  loginWithFacebook: async () => {
     set({ isLoggingIn: true });
     try {
-      const mockFBPayload = {
-        email: "fbuser@bloodlink.org",
-        name: "Facebook Lifesaver",
-        facebookId: "fb-123456",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=fbuser",
-        selectedRole: selectedRole || "DONOR",
+      const dummyFbPayload = {
+        email: `donor_${Math.floor(Math.random() * 1000)}@facebook.com`,
+        name: "Facebook Donor",
+        facebookId: `fb_${Date.now()}`,
+        avatar: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=256",
       };
-      const res = await axios.post(`${API_URL}/auth/facebook`, mockFBPayload);
-      set({ authUser: res.data.user, isLoggingIn: false });
-      toast.success("Signed in with Facebook!");
-      return { success: true, user: res.data.user };
+
+      const res = await axiosInstance.post("/auth/facebook", dummyFbPayload);
+      if (res.data.success) {
+        set({ authUser: res.data.user, token: res.data.token });
+        localStorage.setItem("authUser", JSON.stringify(res.data.user));
+        localStorage.setItem("token", res.data.token);
+        toast.success("Signed in with Facebook!");
+        return { success: true, user: res.data.user };
+      }
     } catch (error) {
-      const message = error.response?.data?.message || "Facebook Auth Failed";
-      toast.error(message);
+      toast.error("Facebook authentication failed");
+      return { success: false };
+    } finally {
       set({ isLoggingIn: false });
-      return { success: false, message };
     }
   },
 
   logout: async () => {
     try {
-      await axios.post(`${API_URL}/auth/logout`);
-      set({ authUser: null });
+      await axiosInstance.post("/auth/logout");
+    } catch (err) {
+      console.log("Logout request error");
+    } finally {
+      set({ authUser: null, token: null });
+      localStorage.removeItem("authUser");
+      localStorage.removeItem("token");
       toast.success("Logged out successfully");
-    } catch (error) {
-      toast.error("Logout failed");
     }
   },
 
-  updateProfile: async (data) => {
+  updateProfile: async (profileData) => {
+    set({ isUpdatingProfile: true });
     try {
-      const res = await axios.put(`${API_URL}/auth/profile`, data);
-      set({ authUser: res.data.user });
-      toast.success("Profile updated successfully!");
-      return { success: true };
+      const res = await axiosInstance.put("/auth/profile", profileData);
+      if (res.data.success) {
+        set({ authUser: res.data.user });
+        localStorage.setItem("authUser", JSON.stringify(res.data.user));
+        toast.success("Profile updated successfully");
+        return true;
+      }
     } catch (error) {
-      const message = error.response?.data?.message || "Failed to update profile";
-      toast.error(message);
-      return { success: false, message };
+      toast.error(error.response?.data?.message || "Failed to update profile");
+      return false;
+    } finally {
+      set({ isUpdatingProfile: false });
     }
   },
 }));
