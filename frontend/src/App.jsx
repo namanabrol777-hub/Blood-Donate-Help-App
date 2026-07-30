@@ -4,13 +4,17 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Loader } from "lucide-react";
 import { Toaster } from "react-hot-toast";
 
-import { useAuthStore } from "./stores/useAuthStore";
+import { useAuthStore, getDashboardRoute } from "./stores/useAuthStore";
 import AnimatedBackground from "./components/AnimatedBackground";
 import CustomCursor from "./components/CustomCursor";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
-import DashboardPage from "./pages/DashboardPage";
+import AdminDashboard from "./pages/AdminDashboard";
+import DoctorDashboard from "./pages/DoctorDashboard";
+import BloodBankDashboard from "./pages/BloodBankDashboard";
+import DonorDashboard from "./pages/DonorDashboard";
 import ProfilePage from "./pages/ProfilePage";
 import NotFoundPage from "./pages/NotFoundPage";
 
@@ -38,50 +42,35 @@ const App = () => {
     return (
       <div className="min-h-screen bg-[#09090b] flex flex-col items-center justify-center text-white space-y-4">
         <AnimatedBackground />
-        <div className="w-12 h-12 rounded-2xl bg-indigo-600/30 border border-indigo-500/50 flex items-center justify-center shadow-2xl animate-pulse">
-          <Loader className="w-6 h-6 text-indigo-400 animate-spin" />
+        <div className="w-12 h-12 rounded-2xl bg-red-600/30 border border-red-500/50 flex items-center justify-center shadow-2xl animate-pulse">
+          <Loader className="w-6 h-6 text-red-400 animate-spin" />
         </div>
         <p className="text-xs text-gray-400 font-medium tracking-widest uppercase animate-pulse">
-          Initializing Auth Session...
+          Initializing BloodLink RBAC Session...
         </p>
       </div>
     );
   }
 
+  const defaultRoleRoute = authUser ? getDashboardRoute(authUser.role) : "/login";
+
   return (
-    <div className="min-h-screen bg-[#09090b] text-white relative font-sans selection:bg-indigo-500 selection:text-white">
-      {/* 60FPS Canvas Background & Custom Desktop Cursor */}
+    <div className="min-h-screen bg-[#09090b] text-white relative font-sans selection:bg-red-600 selection:text-white">
+      {/* 60FPS ECG Heartbeat & Blood Cell Canvas + Custom Cursor */}
       <AnimatedBackground />
       <CustomCursor />
 
-      {/* Animated Route Container */}
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
           
           <Route
             path="/"
-            element={
-              authUser ? (
-                <PageTransition>
-                  <DashboardPage />
-                </PageTransition>
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
+            element={authUser ? <Navigate to={defaultRoleRoute} replace /> : <Navigate to="/login" replace />}
           />
 
           <Route
             path="/dashboard"
-            element={
-              authUser ? (
-                <PageTransition>
-                  <DashboardPage />
-                </PageTransition>
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
+            element={authUser ? <Navigate to={defaultRoleRoute} replace /> : <Navigate to="/login" replace />}
           />
 
           <Route
@@ -92,7 +81,7 @@ const App = () => {
                   <LoginPage />
                 </PageTransition>
               ) : (
-                <Navigate to="/dashboard" replace />
+                <Navigate to={defaultRoleRoute} replace />
               )
             }
           />
@@ -105,7 +94,7 @@ const App = () => {
                   <SignupPage />
                 </PageTransition>
               ) : (
-                <Navigate to="/dashboard" replace />
+                <Navigate to={defaultRoleRoute} replace />
               )
             }
           />
@@ -118,21 +107,67 @@ const App = () => {
                   <SignupPage />
                 </PageTransition>
               ) : (
-                <Navigate to="/dashboard" replace />
+                <Navigate to={defaultRoleRoute} replace />
               )
+            }
+          />
+
+          {/* Role 1 — Super Admin Panel */}
+          <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={["ADMIN"]}>
+                <PageTransition>
+                  <AdminDashboard />
+                </PageTransition>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Role 2 — Doctor Panel */}
+          <Route
+            path="/doctor/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={["DOCTOR"]}>
+                <PageTransition>
+                  <DoctorDashboard />
+                </PageTransition>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Role 3 — Blood Bank Panel */}
+          <Route
+            path="/bloodbank/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={["BLOOD_BANK"]}>
+                <PageTransition>
+                  <BloodBankDashboard />
+                </PageTransition>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Role 4 — Donor Panel */}
+          <Route
+            path="/donor/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={["DONOR"]}>
+                <PageTransition>
+                  <DonorDashboard />
+                </PageTransition>
+              </ProtectedRoute>
             }
           />
 
           <Route
             path="/profile"
             element={
-              authUser ? (
+              <ProtectedRoute allowedRoles={["ADMIN", "DOCTOR", "BLOOD_BANK", "DONOR"]}>
                 <PageTransition>
                   <ProfilePage />
                 </PageTransition>
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              </ProtectedRoute>
             }
           />
 

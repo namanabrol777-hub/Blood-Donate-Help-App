@@ -36,3 +36,24 @@ export const protectRoute = async (req, res, next) => {
     return res.status(401).json({ success: false, message: "Unauthorized - Invalid or Expired Token" });
   }
 };
+
+// Role-Based Access Control (RBAC) Middleware
+export const authorizeRoles = (...allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: "Unauthorized - User context missing" });
+    }
+
+    const userRole = req.user.role ? req.user.role.toUpperCase() : "DONOR";
+    const normalizedAllowedRoles = allowedRoles.map((r) => r.toUpperCase());
+
+    if (!normalizedAllowedRoles.includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        message: `Forbidden - Role '${userRole}' is not authorized to access this resource`,
+      });
+    }
+
+    next();
+  };
+};

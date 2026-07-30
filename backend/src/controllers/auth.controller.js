@@ -2,18 +2,26 @@ import { generateToken } from "../lib/utils.js";
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 
-// Helper to format BloodLink user response safely
+// Helper to format user response safely with role metadata
 const sanitizeUser = (user) => ({
   _id: user._id,
   username: user.username,
   email: user.email,
   fullName: user.fullName || user.username,
   avatar: user.avatar,
+  role: user.role ? user.role.toUpperCase() : "DONOR",
+  isVerified: user.isVerified ?? true,
   bloodGroup: user.bloodGroup || "O+",
   isAvailableForDonation: user.isAvailableForDonation ?? true,
   emergencyContact: user.emergencyContact || "",
   donationsCount: user.donationsCount || 0,
-  role: user.role || "donor",
+  donationStreak: user.donationStreak || 1,
+  digitalCardId: user.digitalCardId || `BL-DONOR-${Math.floor(100000 + Math.random() * 900000)}`,
+  hospitalName: user.hospitalName || "",
+  licenseNumber: user.licenseNumber || "",
+  specialty: user.specialty || "General Physician",
+  bankName: user.bankName || "",
+  address: user.address || "",
   bio: user.bio,
   jobTitle: user.jobTitle,
   authProvider: user.authProvider,
@@ -21,7 +29,7 @@ const sanitizeUser = (user) => ({
 });
 
 export const signup = async (req, res) => {
-  const { username, email, password, bloodGroup } = req.body;
+  const { username, email, password, role, bloodGroup, hospitalName, licenseNumber, bankName } = req.body;
 
   try {
     if (!username || !email || !password) {
@@ -42,16 +50,23 @@ export const signup = async (req, res) => {
       return res.status(400).json({ success: false, message: "Username is already taken" });
     }
 
-    // Bcrypt with 12 salt rounds
     const salt = await bcrypt.genSalt(12);
     const hashedPassword = await bcrypt.hash(password, salt);
+
+    const validRole = ["ADMIN", "DOCTOR", "BLOOD_BANK", "DONOR"].includes(role?.toUpperCase())
+      ? role.toUpperCase()
+      : "DONOR";
 
     const newUser = new User({
       username: username.trim(),
       email: email.toLowerCase().trim(),
       fullName: username.trim(),
       password: hashedPassword,
+      role: validRole,
       bloodGroup: bloodGroup || "O+",
+      hospitalName: hospitalName || "",
+      licenseNumber: licenseNumber || "",
+      bankName: bankName || "",
       authProvider: "local",
     });
 
@@ -60,7 +75,7 @@ export const signup = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: "BloodLink Donor Account Created Successfully!",
+      message: `Registered successfully as ${validRole}`,
       token,
       user: sanitizeUser(newUser),
     });
@@ -104,7 +119,7 @@ export const login = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Logged in successfully to BloodLink",
+      message: "Logged in successfully",
       token,
       user: sanitizeUser(user),
     });
@@ -131,6 +146,7 @@ export const googleAuth = async (req, res) => {
         email: email.toLowerCase().trim(),
         fullName: name || generatedUsername,
         avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${generatedUsername}`,
+        role: "DONOR",
         bloodGroup: "O+",
         authProvider: "google",
         googleId: googleId || `google-${Date.now()}`,
@@ -166,6 +182,7 @@ export const facebookAuth = async (req, res) => {
         email: targetEmail.toLowerCase().trim(),
         fullName: name || generatedUsername,
         avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${generatedUsername}`,
+        role: "DONOR",
         bloodGroup: "O+",
         authProvider: "facebook",
         facebookId: facebookId || `facebook-${Date.now()}`,
@@ -211,7 +228,7 @@ export const checkAuth = (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    const { username, fullName, avatar, bio, jobTitle, bloodGroup, isAvailableForDonation, emergencyContact } = req.body;
+    const { username, fullName, avatar, bio, jobTitle, bloodGroup, isAvailableForDonation, emergencyContact, hospitalName, licenseNumber, bankName } = req.body;
     const userId = req.user._id;
 
     const updates = {};
@@ -223,16 +240,19 @@ export const updateProfile = async (req, res) => {
     if (bloodGroup) updates.bloodGroup = bloodGroup;
     if (typeof isAvailableForDonation === "boolean") updates.isAvailableForDonation = isAvailableForDonation;
     if (emergencyContact !== undefined) updates.emergencyContact = emergencyContact;
+    if (hospitalName !== undefined) updates.hospitalName = hospitalName;
+    if (licenseNumber !== undefined) updates.licenseNumber = licenseNumber;
+    if (bankName !== undefined) updates.bankName = bankName;
 
     const updatedUser = await User.findByIdAndUpdate(userId, updates, { new: true });
 
     return res.status(200).json({
       success: true,
-      message: "BloodLink Donor Profile Updated Successfully!",
+      message: "Profile Updated Successfully!",
       user: sanitizeUser(updatedUser),
     });
   } catch (error) {
     console.error("Error in update profile:", error);
-    return res.status(500).json({ success: false, message: "Failed to update donor profile" });
+    return res.status(500).json({ success: false, message: "Failed to update profile" });
   }
 };

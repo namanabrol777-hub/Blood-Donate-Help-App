@@ -32,6 +32,19 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "https://images.unsplash.com/photo-1615461066841-6116e61058f4?auto=format&fit=crop&q=80&w=256",
     },
+    role: {
+      type: String,
+      enum: ["ADMIN", "DOCTOR", "BLOOD_BANK", "DONOR"],
+      default: "DONOR",
+    },
+    isVerified: {
+      type: Boolean,
+      default: function () {
+        return this.role === "DONOR" || this.role === "ADMIN";
+      },
+    },
+
+    // --- Donor Fields ---
     bloodGroup: {
       type: String,
       enum: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
@@ -49,11 +62,41 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    role: {
-      type: String,
-      enum: ["user", "donor", "hospital", "admin"],
-      default: "donor",
+    donationStreak: {
+      type: Number,
+      default: 1,
     },
+    digitalCardId: {
+      type: String,
+      default: function () {
+        return `BL-DONOR-${Math.floor(100000 + Math.random() * 900000)}`;
+      },
+    },
+
+    // --- Doctor Fields ---
+    hospitalName: {
+      type: String,
+      default: "",
+    },
+    licenseNumber: {
+      type: String,
+      default: "",
+    },
+    specialty: {
+      type: String,
+      default: "General Physician",
+    },
+
+    // --- Blood Bank Fields ---
+    bankName: {
+      type: String,
+      default: "",
+    },
+    address: {
+      type: String,
+      default: "",
+    },
+
     authProvider: {
       type: String,
       enum: ["local", "google", "facebook"],
@@ -69,11 +112,11 @@ const userSchema = new mongoose.Schema(
     },
     bio: {
       type: String,
-      default: "Proud BloodLink Donor saving lives through timely blood donations.",
+      default: "BloodLink User registered on the lifesaving platform.",
     },
     jobTitle: {
       type: String,
-      default: "Registered Blood Donor",
+      default: "Registered User",
     },
   },
   { timestamps: true }

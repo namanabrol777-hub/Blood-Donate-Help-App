@@ -2,6 +2,21 @@ import { create } from "zustand";
 import { axiosInstance } from "../lib/axios.js";
 import toast from "react-hot-toast";
 
+export const getDashboardRoute = (role) => {
+  const normalizedRole = role ? role.toUpperCase() : "DONOR";
+  switch (normalizedRole) {
+    case "ADMIN":
+      return "/admin/dashboard";
+    case "DOCTOR":
+      return "/doctor/dashboard";
+    case "BLOOD_BANK":
+      return "/bloodbank/dashboard";
+    case "DONOR":
+    default:
+      return "/donor/dashboard";
+  }
+};
+
 export const useAuthStore = create((set, get) => ({
   authUser: JSON.parse(localStorage.getItem("authUser")) || null,
   token: localStorage.getItem("token") || null,
@@ -36,13 +51,13 @@ export const useAuthStore = create((set, get) => ({
         set({ authUser: res.data.user, token: res.data.token });
         localStorage.setItem("authUser", JSON.stringify(res.data.user));
         localStorage.setItem("token", res.data.token);
-        toast.success("Account created successfully!");
-        return true;
+        toast.success(res.data.message || "Registered successfully!");
+        return { success: true, user: res.data.user };
       }
     } catch (error) {
       const msg = error.response?.data?.message || "Registration failed";
       toast.error(msg);
-      return false;
+      return { success: false };
     } finally {
       set({ isSigningUp: false });
     }
@@ -56,13 +71,13 @@ export const useAuthStore = create((set, get) => ({
         set({ authUser: res.data.user, token: res.data.token });
         localStorage.setItem("authUser", JSON.stringify(res.data.user));
         localStorage.setItem("token", res.data.token);
-        toast.success("Welcome back!");
-        return true;
+        toast.success(`Welcome back, ${res.data.user.username}!`);
+        return { success: true, user: res.data.user };
       }
     } catch (error) {
       const msg = error.response?.data?.message || "Invalid credentials";
       toast.error(msg);
-      return false;
+      return { success: false };
     } finally {
       set({ isLoggingIn: false });
     }
@@ -71,10 +86,9 @@ export const useAuthStore = create((set, get) => ({
   loginWithGoogle: async () => {
     set({ isLoggingIn: true });
     try {
-      // Mock/simulated OAuth popup payload for demonstration
       const dummyGooglePayload = {
-        email: `user_${Math.floor(Math.random() * 1000)}@gmail.com`,
-        name: "Google User",
+        email: `donor_${Math.floor(Math.random() * 1000)}@gmail.com`,
+        name: "Google Donor",
         googleId: `google_${Date.now()}`,
         avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=256",
       };
@@ -85,10 +99,11 @@ export const useAuthStore = create((set, get) => ({
         localStorage.setItem("authUser", JSON.stringify(res.data.user));
         localStorage.setItem("token", res.data.token);
         toast.success("Signed in with Google!");
-        return true;
+        return { success: true, user: res.data.user };
       }
     } catch (error) {
       toast.error("Google authentication failed");
+      return { success: false };
     } finally {
       set({ isLoggingIn: false });
     }
@@ -98,8 +113,8 @@ export const useAuthStore = create((set, get) => ({
     set({ isLoggingIn: true });
     try {
       const dummyFbPayload = {
-        email: `fb_user_${Math.floor(Math.random() * 1000)}@facebook.com`,
-        name: "Facebook User",
+        email: `donor_${Math.floor(Math.random() * 1000)}@facebook.com`,
+        name: "Facebook Donor",
         facebookId: `fb_${Date.now()}`,
         avatar: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=256",
       };
@@ -110,10 +125,11 @@ export const useAuthStore = create((set, get) => ({
         localStorage.setItem("authUser", JSON.stringify(res.data.user));
         localStorage.setItem("token", res.data.token);
         toast.success("Signed in with Facebook!");
-        return true;
+        return { success: true, user: res.data.user };
       }
     } catch (error) {
       toast.error("Facebook authentication failed");
+      return { success: false };
     } finally {
       set({ isLoggingIn: false });
     }
