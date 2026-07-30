@@ -1,369 +1,200 @@
-import React, { useState, useEffect } from "react";
-import { useAuthStore } from "../stores/useAuthStore.js"; // Assuming correct path
-import { Camera, Mail, Phone, MapPin, Calendar, X, Loader2 } from "lucide-react"; // Added X for close, Loader2 for modals
-import NavBar from "./NavBar.jsx";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  User,
+  Mail,
+  Shield,
+  Briefcase,
+  FileText,
+  ArrowLeft,
+  Camera,
+  Save,
+  CheckCircle,
+  Clock,
+  Sparkles,
+} from "lucide-react";
+import { useAuthStore } from "../stores/useAuthStore";
+import TiltCard from "../components/TiltCard";
 
 const ProfilePage = () => {
-  const {
-    authUser,
-    logout,
-    isUpdatingProfile, // Used for profile pic loading state
-    updateProfile,
-    updatePhone,
-    updateAddress,
-    // Assuming loading states exist for phone/address updates
-    // Add them if available: isUpdatingPhone, isUpdatingAddress
-  } = useAuthStore();
+  const { authUser, updateProfile, isUpdatingProfile } = useAuthStore();
+  const navigate = useNavigate();
 
-  // Extract the user data correctly
-  const userData = authUser?.data || authUser;
+  const [username, setUsername] = useState(authUser?.username || "");
+  const [fullName, setFullName] = useState(authUser?.fullName || "");
+  const [avatar, setAvatar] = useState(authUser?.avatar || "");
+  const [bio, setBio] = useState(authUser?.bio || "");
+  const [jobTitle, setJobTitle] = useState(authUser?.jobTitle || "");
 
-  const [selectedImg, setSelectedImg] = useState(null);
-  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
-  const [newAddress, setNewAddress] = useState("");
-  const [isPhoneModalOpen, setIsPhoneModalOpen] = useState(false);
-  const [newPhone, setNewPhone] = useState("");
-  // Keep view state if you plan to add other views (like settings, etc.) later
-  // const [view, setView] = useState("profile");
-
-  // --- State for modal loading ---
-  // Initialize these based on your store's state if available
-  const [isSavingAddress, setIsSavingAddress] = useState(false);
-  const [isSavingPhone, setIsSavingPhone] = useState(false);
-
-  // Format address object to string (Remains the same)
-  const formatAddress = (addressObj) => {
-    if (!addressObj) return "No Address Provided";
-    if (typeof addressObj === 'string') return addressObj.trim() ? addressObj : "No Address Provided";
-    if (typeof addressObj === 'object') {
-      const { street, city, state, zipCode, country } = addressObj;
-      const parts = [street, city, state, zipCode, country].filter(part => part && String(part).trim());
-      return parts.length > 0 ? parts.join(', ') : "No Address Provided";
-    }
-    return "No Address Provided";
+  const handleSave = async (e) => {
+    e.preventDefault();
+    await updateProfile({
+      username,
+      fullName,
+      avatar,
+      bio,
+      jobTitle,
+    });
   };
-
-  // Handle image upload (Remains the same functionality)
-  const handleImageUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-
-    reader.onload = async () => {
-      const base64Image = reader.result;
-      setSelectedImg(base64Image); // Update local state immediately for preview
-      try {
-        // updateProfile likely handles its own loading state via isUpdatingProfile
-        await updateProfile({ profilePic: base64Image });
-        // Optionally refetch user data or rely on store update
-      } catch (error) {
-        console.error("Failed to update profile picture:", error);
-        setSelectedImg(userData?.profilePic || "/avatar.png"); // Revert preview on error
-        // Add user feedback (e.g., toast notification)
-      }
-    };
-    reader.onerror = (error) => {
-      console.error("FileReader error:", error);
-      // Add user feedback
-    };
-  };
-
-
-  // Handle address update (Remains the same functionality)
-  const handleAddressUpdate = async () => {
-    if (newAddress.trim()) {
-      setIsSavingAddress(true); // Start loading
-      try {
-        await updateAddress({ address: newAddress.trim() });
-        if (authUser) {
-          if (authUser.data) authUser.data.address = newAddress.trim();
-          else authUser.address = newAddress.trim();
-        } // Clear input after success
-        // Add success feedback (toast)
-      } catch (error) {
-        console.error("Failed to update address:", error);
-        // Add error feedback (toast)
-      } finally {
-        setIsSavingAddress(false); // Stop loading
-      }
-    } else {
-      // Feedback: Address cannot be empty
-      alert("Address cannot be empty.");
-    }
-  };
-
-  // Handle phone update (Remains the same functionality)
-  const handlePhoneUpdate = async () => {
-    // Basic validation for phone numbers
-    if (newPhone.trim() && /^[+]?[0-9\s\-()]+$/.test(newPhone.trim())) {
-      setIsSavingPhone(true); // Start loading
-      try {
-        // ✅ Backend expects { phone }
-        await updatePhone({ phone: newPhone.trim() });
-
-        // ✅ Update local store (so UI updates instantly)
-        if (authUser) {
-          if (authUser.data) authUser.data.phoneNumber = newPhone.trim();
-          else authUser.phoneNumber = newPhone.trim();
-        }
-
-        // ✅ Close modal & clear input
-        setIsPhoneModalOpen(false);
-        setNewPhone("");
-
-        // ✅ Optional: show success feedback
-        alert("Phone number updated successfully!");
-      } catch (error) {
-        console.error("Failed to update phone:", error);
-        alert("Failed to update phone number. Please try again.");
-      } finally {
-        setIsSavingPhone(false); // Stop loading
-      }
-    } else {
-      // Invalid phone number
-      alert("Please enter a valid phone number.");
-    }
-  };
-
-
-
-  // Set initial selected image from user data
-  useEffect(() => {
-    if (userData?.profilePic) {
-      setSelectedImg(userData.profilePic);
-    } else {
-      setSelectedImg("/avatar.png"); // Set default if no profile pic
-    }
-  }, [userData?.profilePic]); // Depend only on profilePic
-
-  // Show loading state if user data isn't available yet
-  if (!userData) {
-    return (
-      // Use the theme background
-      <div className="flex items-center justify-center p-6 bg-[#fdf6f7] min-h-screen mt-16">
-        <Loader2 className="h-8 w-8 text-[#dc3545] animate-spin" />
-        <span className="ml-3 text-gray-600">Loading user data...</span>
-      </div>
-    );
-  }
 
   return (
-    // Main container with theme background and padding
-    <>
-      <NavBar />
-      <div className="p-6 bg-[#fdf6f7] min-h-screen mt-20"> {/* Added mt-16 */}
-        {/* Main profile card - White background, rounded, shadow */}
-        <div className="w-full max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-md">
+    <div className="min-h-screen w-full p-4 md:p-8 relative z-10 flex flex-col items-center justify-center">
+      <div className="w-full max-w-4xl space-y-6">
+        
+        {/* Back Button */}
+        <motion.button
+          onClick={() => navigate("/dashboard")}
+          whileHover={{ x: -4 }}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-gray-300 text-xs font-semibold backdrop-blur-md transition-all cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to Dashboard</span>
+        </motion.button>
 
-          {/* Profile Header */}
-          <div className="flex flex-col sm:flex-row items-center sm:items-end mb-8 gap-6"> {/* Adjusted gap and alignment */}
-            {/* Profile Picture */}
-            <div className="relative flex-shrink-0">
-              {/* Loading spinner overlay for profile picture update */}
-              {isUpdatingProfile && (
-                <div className="absolute inset-0 flex justify-center items-center bg-black bg-opacity-40 rounded-full z-10">
-                  <Loader2 className="w-8 h-8 text-white animate-spin" />
+        {/* Glass Profile Card */}
+        <TiltCard>
+          <div className="glass-card rounded-3xl p-8 space-y-8 border border-white/15 shadow-2xl relative overflow-hidden">
+            
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row items-center gap-6 pb-6 border-b border-white/10">
+              <div className="relative group">
+                <img
+                  src={avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256"}
+                  alt="Avatar"
+                  className="w-24 h-24 rounded-full object-cover border-2 border-indigo-500/70 shadow-2xl"
+                />
+                <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                  <Camera className="w-6 h-6 text-white" />
                 </div>
-              )}
-              <img
-                src={selectedImg || "/avatar.png"} // Use state for preview, fallback to default
-                alt="Profile"
-                className="rounded-full w-32 h-32 object-cover border-4 border-gray-200 shadow-sm" // Added border
-              />
-              {/* Camera icon for upload - Themed red background */}
-              <label
-                htmlFor="file-upload"
-                className="absolute bottom-1 right-1 p-2 bg-[#dc3545] hover:bg-[#c82333] rounded-full cursor-pointer shadow-md transition-colors"
-                title="Change profile picture"
+              </div>
+
+              <div className="text-center sm:text-left space-y-1">
+                <div className="flex items-center gap-2 justify-center sm:justify-start">
+                  <h1 className="text-2xl font-bold text-white">{authUser?.username}</h1>
+                  <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 text-[10px] font-bold uppercase tracking-wider border border-indigo-500/30">
+                    {authUser?.role || "USER"}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-400">{authUser?.email}</p>
+                <div className="flex items-center gap-3 text-[11px] text-gray-400 pt-1">
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-indigo-400" />
+                    Joined {authUser?.createdAt ? new Date(authUser.createdAt).toLocaleDateString() : "Recently"}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Shield className="w-3 h-3 text-emerald-400" />
+                    1-Hour JWT Auth
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Profile Edit Form */}
+            <form onSubmit={handleSave} className="space-y-6">
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                
+                {/* Username */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-gray-300">Username</label>
+                  <div className="relative">
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="w-full glass-input pl-10 pr-4 py-2.5 rounded-xl text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Full Name */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-gray-300">Full Name</label>
+                  <div className="relative">
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="w-full glass-input pl-10 pr-4 py-2.5 rounded-xl text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Job Title */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-gray-300">Job Title / Designation</label>
+                  <div className="relative">
+                    <Briefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={jobTitle}
+                      onChange={(e) => setJobTitle(e.target.value)}
+                      placeholder="Senior Full Stack Engineer"
+                      className="w-full glass-input pl-10 pr-4 py-2.5 rounded-xl text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Avatar URL */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-gray-300">Avatar Image URL</label>
+                  <div className="relative">
+                    <Camera className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={avatar}
+                      onChange={(e) => setAvatar(e.target.value)}
+                      placeholder="https://images.unsplash.com/..."
+                      className="w-full glass-input pl-10 pr-4 py-2.5 rounded-xl text-sm"
+                    />
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Bio */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-gray-300">Bio</label>
+                <div className="relative">
+                  <FileText className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
+                  <textarea
+                    rows={3}
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    placeholder="Short bio..."
+                    className="w-full glass-input pl-10 pr-4 py-2.5 rounded-xl text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Submit Save Button */}
+              <motion.button
+                type="submit"
+                disabled={isUpdatingProfile}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full sm:w-auto px-8 py-3.5 shimmer-btn rounded-xl text-white font-semibold text-sm shadow-xl flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <Camera className="w-4 h-4" color="white" /> {/* Smaller icon */}
-              </label>
-              <input
-                type="file"
-                id="file-upload"
-                accept="image/*" // Specify accepted file types
-                className="hidden"
-                onChange={handleImageUpload}
-              />
-            </div>
+                {isUpdatingProfile ? (
+                  <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    <span>Save Profile Changes</span>
+                  </>
+                )}
+              </motion.button>
 
-            {/* Name and Email */}
-            <div className="text-center sm:text-left">
-              <h2 className="text-3xl font-bold text-gray-900 mb-1">
-                {userData?.fullName || "User Name"}
-              </h2>
-              <div className="flex items-center justify-center sm:justify-start text-gray-500">
-                <Mail className="w-4 h-4 mr-2" />
-                <span>{userData?.email || "user@example.com"}</span>
-              </div>
-            </div>
+            </form>
+
           </div>
+        </TiltCard>
 
-          {/* Personal Information Section */}
-          <div className="mb-8 border-t border-gray-200 pt-6">
-            <h3 className="text-xl font-semibold text-gray-800 mb-5">Personal Information</h3>
-
-            <div className="space-y-4"> {/* Added space between items */}
-              {/* Phone Number */}
-              <div className="flex flex-wrap items-center text-gray-700 gap-x-4 gap-y-2">
-                <div className="flex items-center flex-shrink-0 w-32"> {/* Fixed width label */}
-                  <Phone className="w-5 h-5 mr-3 text-gray-400" />
-                  <span className="font-medium">Phone:</span>
-                </div>
-                <span className="flex-grow break-words">{userData?.phoneNumber || <span className="text-gray-400 italic">Not Provided</span>}</span>
-                {/* Update Button - Subtle red link style */}
-                <button
-                  className="text-sm font-medium text-red-600 hover:text-red-800 transition-colors focus:outline-none"
-                  onClick={() => setIsPhoneModalOpen(true)}
-                >
-                  Update
-                </button>
-              </div>
-
-              {/* Address */}
-              <div className="flex flex-wrap items-center text-gray-700 gap-x-4 gap-y-2">
-                <div className="flex items-center flex-shrink-0 w-32"> {/* Fixed width label */}
-                  <MapPin className="w-5 h-5 mr-3 text-gray-400" />
-                  <span className="font-medium">Address:</span>
-                </div>
-                <span className="flex-grow break-words">{formatAddress(userData?.address) === "No Address Provided" ? <span className="text-gray-400 italic">Not Provided</span> : formatAddress(userData?.address)}</span>
-                {/* Update Button - Subtle red link style */}
-                <button
-                  className="text-sm font-medium text-red-600 hover:text-red-800 transition-colors focus:outline-none"
-                  onClick={() => setIsAddressModalOpen(true)}
-                >
-                  Update
-                </button>
-              </div>
-
-              {/* Member Since */}
-              <div className="flex flex-wrap items-center text-gray-700 gap-x-4 gap-y-2">
-                <div className="flex items-center flex-shrink-0 w-32"> {/* Fixed width label */}
-                  <Calendar className="w-5 h-5 mr-3 text-gray-400" />
-                  <span className="font-medium">Member Since:</span>
-                </div>
-                <span className="flex-grow break-words">
-                  {userData?.createdAt ? new Date(userData.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : "-"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-4 mt-8 border-t border-gray-200 pt-6">
-            {/* Logout Button - Themed Red */}
-            <button
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#dc3545] hover:bg-[#c82333] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
-              onClick={logout}
-            >
-              Logout
-            </button>
-            {/* Add other buttons like "Edit Profile" here if needed */}
-          </div>
-        </div>
-
-
-        {/* --- Modals --- */}
-
-        {/* Address Modal */}
-        {isAddressModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
-            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md relative">
-              {/* Close button */}
-              <button
-                onClick={() => setIsAddressModalOpen(false)}
-                className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none"
-                aria-label="Close modal"
-              >
-                <X className="w-6 h-6" />
-              </button>
-
-              <h3 className="text-xl font-semibold text-gray-800 mb-5">Update Address</h3>
-              <textarea
-                // Themed textarea style
-                className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 sm:text-sm mb-4 resize-none" // Changed resize
-                rows="4"
-                placeholder="Enter your full address (Street, City, State, Zip, Country)"
-                value={newAddress}
-                onChange={(e) => setNewAddress(e.target.value)}
-              ></textarea>
-              <div className="flex justify-end gap-3">
-                {/* Cancel Button - Gray outline */}
-                <button
-                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-colors"
-                  onClick={() => setIsAddressModalOpen(false)}
-                  disabled={isSavingAddress}
-                >
-                  Cancel
-                </button>
-                {/* Save Button - Themed Red */}
-                <button
-                  className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${isSavingAddress
-                    ? 'bg-red-300 cursor-not-allowed'
-                    : 'bg-[#dc3545] hover:bg-[#c82333] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'
-                    } transition-colors`}
-                  onClick={handleAddressUpdate}
-                  disabled={isSavingAddress}
-                >
-                  {isSavingAddress ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                  Save Address
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Phone Modal */}
-        {isPhoneModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
-            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md relative">
-              {/* Close button */}
-              <button
-                onClick={() => setIsPhoneModalOpen(false)}
-                className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none"
-                aria-label="Close modal"
-              >
-                <X className="w-6 h-6" />
-              </button>
-
-              <h3 className="text-xl font-semibold text-gray-800 mb-5">Update Phone Number</h3>
-              <input
-                type="tel" // Use tel type for phone numbers
-                // Themed input style
-                className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 sm:text-sm mb-4"
-                placeholder="Enter your new phone number"
-                value={newPhone}
-                onChange={(e) => setNewPhone(e.target.value)}
-              />
-              <div className="flex justify-end gap-3">
-                {/* Cancel Button - Gray outline */}
-                <button
-                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-colors"
-                  onClick={() => setIsPhoneModalOpen(false)}
-                  disabled={isSavingPhone}
-                >
-                  Cancel
-                </button>
-                {/* Save Button - Themed Red */}
-                <button
-                  className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${isSavingPhone
-                    ? 'bg-red-300 cursor-not-allowed'
-                    : 'bg-[#dc3545] hover:bg-[#c82333] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'
-                    } transition-colors`}
-                  onClick={handlePhoneUpdate}
-                  disabled={isSavingPhone}
-                >
-                  {isSavingPhone ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                  Save Phone
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div> // End main container
-    </>
+      </div>
+    </div>
   );
 };
 

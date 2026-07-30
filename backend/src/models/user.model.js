@@ -2,50 +2,62 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      index: true,
+    },
     email: {
       type: String,
       required: true,
       unique: true,
-    },
-    fullName: {
-      type: String,
-      required: true,
+      lowercase: true,
+      trim: true,
+      index: true,
     },
     password: {
       type: String,
-      required: true,
-      minlength: 8,
+      required: function () {
+        return this.authProvider === "local";
+      },
+      minlength: 6,
     },
-    profilePic: {
+    fullName: {
       type: String,
       default: "",
     },
-    phoneNumber: {
+    avatar: {
+      type: String,
+      default: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256",
+    },
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+    },
+    authProvider: {
+      type: String,
+      enum: ["local", "google", "facebook"],
+      default: "local",
+    },
+    googleId: {
       type: String,
       default: "",
     },
-    address: {
-      street: {
-        type: String,
-        default: "",
-      },
-      city: {
-        type: String,
-        default: "",
-      },
-      state: {
-        type: String,
-        default: "",
-      },
-      zipCode: {
-        type: String,
-        default: "",
-      },
-      country: {
-        type: String,
-        default: "",
-      }
-    }
+    facebookId: {
+      type: String,
+      default: "",
+    },
+    bio: {
+      type: String,
+      default: "Building the future with modern design & clean code.",
+    },
+    jobTitle: {
+      type: String,
+      default: "Software Engineer",
+    },
   },
   { timestamps: true }
 );
